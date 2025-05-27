@@ -51,7 +51,7 @@ const bool isLoadIndicator = bool.fromEnvironment('IS_LOAD_IND', defaultValue: t
 // Permissions
 const bool isCameraEnabled = bool.fromEnvironment('IS_CAMERA', defaultValue: false);
 const bool isLocationEnabled = bool.fromEnvironment('IS_LOCATION', defaultValue: false);
-const bool isMicEnabled = bool.fromEnvironment('IS_MIC', defaultValue: false);
+const bool isMicEnabled = bool.fromEnvironment('IS_MIC', defaultValue: true);
 const bool isNotificationEnabled = bool.fromEnvironment('IS_NOTIFICATION', defaultValue: true);
 const bool isContactEnabled = bool.fromEnvironment('IS_CONTACT', defaultValue: false);
 const bool isBiometricEnabled = bool.fromEnvironment('IS_BIOMETRIC', defaultValue: false);

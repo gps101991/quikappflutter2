@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter/gestures.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'chat_message.dart';
 import 'chat_service.dart';
 
@@ -24,7 +25,9 @@ class _ChatWidgetState extends State<ChatWidget> {
   late final ChatService _chatService;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isLoading = false;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -33,6 +36,62 @@ class _ChatWidgetState extends State<ChatWidget> {
     _chatService.chatStream.listen((_) {
       _scrollToBottom();
     });
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          setState(() => _isListening = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $error')),
+          );
+        },
+      );
+      if (!available) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Speech initialization error: $e');
+    }
+  }
+
+  Future<void> _startListening() async {
+    try {
+      if (!_isListening) {
+        bool available = await _speech.initialize();
+        if (available) {
+          setState(() => _isListening = true);
+          await _speech.listen(
+            onResult: (result) {
+              setState(() {
+                _messageController.text = result.recognizedWords;
+                if (result.finalResult) {
+                  _isListening = false;
+                  if (_messageController.text.isNotEmpty) {
+                    _handleSend();
+                  }
+                }
+              });
+            },
+          );
+        }
+      } else {
+        setState(() => _isListening = false);
+        _speech.stop();
+      }
+    } catch (e) {
+      setState(() => _isListening = false);
+      debugPrint('Speech recognition error: $e');
+    }
   }
 
   @override
@@ -40,6 +99,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     _messageController.dispose();
     _scrollController.dispose();
     _chatService.dispose();
+    _speech.stop();
     super.dispose();
   }
 
@@ -214,70 +274,114 @@ class _ChatWidgetState extends State<ChatWidget> {
       child: Column(
         crossAxisAlignment: alignment,
         children: [
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.7,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SelectableText.rich(
-                  TextSpan(
-                    children: _parseMessageText(message.text),
-                  ),
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
+          Row(
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (!isUser) ...[
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  radius: 16,
+                  child: const Icon(Icons.assistant, color: Colors.white, size: 20),
                 ),
-                if (message.links != null && message.links!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...message.links!.map((link) => 
-                    TextButton(
-                      onPressed: () => _handleLinkTap(link['url']!),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        alignment: Alignment.centerLeft,
-                      ),
-                      child: Text(
-                        link['title'] ?? link['url']!,
-                        style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: bubbleColor,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isUser ? 16 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 16),
+                    ),
+                    border: Border.all(
+                      color: isUser 
+                          ? Theme.of(context).primaryColor.withOpacity(0.2)
+                          : Colors.grey.shade300,
+                      width: 1,
                     ),
                   ),
-                ],
-                if (message.links != null && message.links!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: message.links!.map((link) =>
-                      ElevatedButton(
-                        onPressed: () => _handleLinkTap(link['url']!),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SelectableText.rich(
+                        TextSpan(
+                          children: _parseMessageText(message.text),
+                        ),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (message.links != null && message.links!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        ...message.links!.map((link) => 
+                          TextButton(
+                            onPressed: () => _handleLinkTap(link['url']!),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              alignment: Alignment.centerLeft,
+                            ),
+                            child: Text(
+                              link['title'] ?? link['url']!,
+                              style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
                           ),
                         ),
-                        child: const Text('View More'),
-                      ),
-                    ).toList(),
+                      ],
+                      if (message.links != null && message.links!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: message.links!.map((link) =>
+                            ElevatedButton(
+                              onPressed: () => _handleLinkTap(link['url']!),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: const Text('View More'),
+                            ),
+                          ).toList(),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
+              ),
+              if (isUser) ...[
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  radius: 16,
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                ),
               ],
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              _formatTimestamp(message.timestamp),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -350,6 +454,23 @@ class _ChatWidgetState extends State<ChatWidget> {
     return spans;
   }
 
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+    }
+  }
+
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -368,39 +489,66 @@ class _ChatWidgetState extends State<ChatWidget> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type your message...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-              ),
-              onSubmitted: (_) => _handleSend(),
+          // Microphone Button
+          FloatingActionButton(
+            onPressed: _startListening,
+            mini: true,
+            backgroundColor: _isListening ? Colors.red : Colors.grey.shade200,
+            child: Icon(
+              _isListening ? Icons.mic : Icons.mic_none,
+              color: _isListening ? Colors.white : Colors.grey.shade700,
             ),
           ),
           const SizedBox(width: 8),
-          FloatingActionButton(
-            onPressed: _isLoading ? null : _handleSend,
-            mini: true,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          // Text Input Field
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: _isListening ? 'Listening...' : 'Type your message...',
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                      onSubmitted: (_) => _handleSend(),
                     ),
-                  )
-                : const Icon(Icons.send),
+                  ),
+                  // Send Button
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: FloatingActionButton(
+                      onPressed: _isLoading ? null : _handleSend,
+                      mini: true,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.send,color: Colors.white,),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
