@@ -2072,17 +2072,56 @@ workflows:
           </plist>
           EOF
 
-          echo "🔧 Preparing Flutter iOS framework..."
-          flutter precache --ios
+          echo "🧹 Cleaning build..."
+          flutter clean
+
+          echo "📦 Getting dependencies..."
           flutter pub get
-          
+
+          echo "🔧 Setting up CocoaPods..."
           cd ios
-          rm -rf .symlinks/
-          rm -rf Flutter/Flutter.framework
-          rm -rf Flutter/Flutter.podspec
-          cd ..
+          rm -rf Pods Podfile.lock
+          rm -rf .symlinks/plugins/*
           
-          flutter build ios-framework --no-debug --no-profile
+          # Update Podfile
+          cat > Podfile <<EOF
+          platform :ios, '13.0'
+
+          # Prevent Cocoapods from embedding a second Flutter framework
+          install! 'cocoapods', :disable_input_output_paths => true
+
+          target 'Runner' do
+            use_frameworks!
+            use_modular_headers!
+            
+            # Flutter Pod
+            flutter_application_path = '..'
+            load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
+            install_all_flutter_pods(flutter_application_path)
+            
+            # Fix framework signing issues
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                target.build_configurations.each do |config|
+                  config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+                  config.build_settings['ENABLE_BITCODE'] = 'NO'
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+                  config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
+                  config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
+                  
+                  # Add arm64 to excluded architectures for simulators
+                  if config.build_settings['SDKROOT'] == 'iphoneos'
+                    config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+                  end
+                end
+              end
+            end
+          end
+          EOF
+
+          echo "📦 Installing pods..."
+          pod install --repo-update
+          cd ..
 
           echo "🏗️ Building Flutter iOS app..."
           flutter build ios --release --no-codesign \
@@ -2119,11 +2158,6 @@ workflows:
               echo "❌ Flutter build failed"
               exit 1
             }
-
-          echo "📦 Setting up CocoaPods..."
-          cd ios
-          pod install --repo-update
-          cd ..
 
           echo "📦 Archiving app..."
           xcodebuild -workspace "ios/Runner.xcworkspace" \
