@@ -1945,15 +1945,16 @@ workflows:
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
 
-          # Export variables for subsequent steps
+          # Export variables to custom env file
+          MY_ENV_FILE="$CM_BUILD_DIR/code_signing_env.sh"
           {
-            echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
-            echo "PROFILE_UUID=$PROFILE_UUID"
-            echo "PROFILE_NAME=$PROFILE_NAME"
-            echo "KEYCHAIN_NAME=$KEYCHAIN_NAME"
-            echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD"
-          } >> "$CM_ENV"
-
+            echo "export CODE_SIGN_IDENTITY=\"$CODE_SIGN_IDENTITY\""
+            echo "export PROFILE_UUID=\"$PROFILE_UUID\""
+            echo "export PROFILE_NAME=\"$PROFILE_NAME\""
+            echo "export KEYCHAIN_NAME=\"$KEYCHAIN_NAME\""
+            echo "export KEYCHAIN_PASSWORD=\"$KEYCHAIN_PASSWORD\""
+          } > "$MY_ENV_FILE"
+          
           echo "✅ Code signing setup completed successfully"
 
       - name: Flutter build preparation
@@ -1977,11 +1978,15 @@ workflows:
         script: |
           set -euo pipefail
           trap 'echo "❌ Error on line $LINENO"' ERR
-
+          
+          echo "🔍 Contents of code_signing_env.sh:"
+          cat "$CM_BUILD_DIR/code_signing_env.sh"
+  
+  
           echo "📱 Building and signing IPA..."
 
           # Load environment variables
-          source "$CM_ENV"
+          source "$CM_BUILD_DIR/code_signing_env.sh"
 
           echo "🔑 Using signing identity: $CODE_SIGN_IDENTITY"
           echo "📄 Using provisioning profile: $PROFILE_UUID"
@@ -2084,9 +2089,10 @@ workflows:
         script: |
           echo "🧹 Cleaning up sensitive files..."
           rm -f "$CM_BUILD_DIR/certificate.p12" \
-                "$CM_BUILD_DIR/profile.mobileprovision" \
-                "$CM_BUILD_DIR/profile.plist" \
-                "ios/ExportOptions.plist"
+          "$CM_BUILD_DIR/profile.mobileprovision" \
+          "$CM_BUILD_DIR/profile.plist" \
+          "$CM_BUILD_DIR/code_signing_env.sh" \
+          "ios/ExportOptions.plist"
           security delete-keychain "$KEYCHAIN_NAME" || true
           echo "✅ Cleanup completed"
 
