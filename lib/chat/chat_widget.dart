@@ -76,9 +76,9 @@ class _ChatWidgetState extends State<ChatWidget> {
                 _messageController.text = result.recognizedWords;
                 if (result.finalResult) {
                   _isListening = false;
-                  if (_messageController.text.isNotEmpty) {
-                    _handleSend();
-                  }
+                  // if (_messageController.text.isNotEmpty) {
+                  //   _handleSend();
+                  // }
                 }
               });
             },
