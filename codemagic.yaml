@@ -1815,11 +1815,11 @@ workflows:
     environment:
       flutter: stable
       java: 17
-    cache:
-      cache_paths:
-        - $FLUTTER_ROOT/.pub-cache
-        - $HOME/.gradle/caches
-        - $HOME/.gradle/wrapper
+#    cache:
+#      cache_paths:
+#        - $FLUTTER_ROOT/.pub-cache
+#        - $HOME/.gradle/caches
+#        - $HOME/.gradle/wrapper
     scripts:
       - *debug_env
       - *change_proj_name
@@ -1837,7 +1837,7 @@ workflows:
     artifacts:
       - build/**/outputs/apk/**/*.apk
       - build/**/outputs/bundle/**/*.aab
-      - build/**/outputs/mapping/release/mapping.txt
+#      - build/**/outputs/mapping/release/mapping.txt
       - flutter_drive.log
     publishing:
       email:
