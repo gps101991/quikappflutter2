@@ -1965,11 +1965,46 @@ workflows:
           cd ..
           
           flutter clean
+          
+          echo "📦 Getting Flutter dependencies..."
           flutter pub get
           
+          echo "🔧 Setting up CocoaPods..."
           cd ios
+          
+          # Update Podfile to handle frameworks
+          cat > Podfile <<EOF
+          platform :ios, '13.0'
+          
+          # Prevent Cocoapods from embedding a second Flutter framework
+          install! 'cocoapods', :disable_input_output_paths => true
+          
+          target 'Runner' do
+            use_frameworks!
+            use_modular_headers!
+            
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+            
+            # Fix framework signing issues
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                target.build_configurations.each do |config|
+                  config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+                  config.build_settings['ENABLE_BITCODE'] = 'NO'
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+                  config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
+                  config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
+                end
+              end
+            end
+          end
+          EOF
+          
+          echo "📦 Installing pods..."
           pod install
           cd ..
+          
+          echo "✅ Build preparation completed"
 
       - name: Build Flutter iOS
         script: |
@@ -2014,6 +2049,12 @@ workflows:
             <true/>
             <key>thinning</key>
             <string>&lt;none&gt;</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>embedOnDemandResourcesAssetPacksInBundle</key>
+            <true/>
+            <key>iCloudContainerEnvironment</key>
+            <string>Production</string>
           </dict>
           </plist>
           EOF
@@ -2072,6 +2113,41 @@ workflows:
           echo "🆔 Team ID: $APPLE_TEAM_ID"
           echo "📦 Bundle ID: $BUNDLE_ID"
             
+          # Create ExportOptions.plist with framework handling
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>teamID</key>
+            <string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$BUNDLE_ID</key>
+              <string>$PROFILE_UUID</string>
+            </dict>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>compileBitcode</key>
+            <false/>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>thinning</key>
+            <string>&lt;none&gt;</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>embedOnDemandResourcesAssetPacksInBundle</key>
+            <true/>
+            <key>iCloudContainerEnvironment</key>
+            <string>Production</string>
+          </dict>
+          </plist>
+          EOF
+            
           echo "📦 Archiving app..."
           xcodebuild -workspace "ios/Runner.xcworkspace" \
             -scheme "Runner" \
@@ -2090,10 +2166,25 @@ workflows:
             EXPANDED_PROVISIONING_PROFILE="$PROFILE_UUID" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_NAME" \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            SWIFT_OPTIMIZATION_LEVEL="-Onone" || {
+            SWIFT_OPTIMIZATION_LEVEL="-Onone" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
+            EMBEDDED_CONTENT_CONTAINS_SWIFT=YES || {
               echo "❌ Archive failed"
               exit 1
             }
+
+          # Sign frameworks before export
+          echo "🔐 Signing frameworks..."
+          ARCHIVE_PATH="build/ios/archive/Runner.xcarchive"
+          FRAMEWORKS_PATH="$ARCHIVE_PATH/Products/Applications/Runner.app/Frameworks"
+          
+          find "$FRAMEWORKS_PATH" -name "*.framework" -type d | while read -r framework; do
+            echo "🔑 Signing framework: $(basename "$framework")"
+            codesign --force --sign "$CODE_SIGN_IDENTITY" --keychain "$KEYCHAIN_NAME" \
+              --preserve-metadata=identifier,entitlements,flags \
+              "$framework"
+          done
 
           echo "📦 Exporting IPA..."
           xcodebuild -exportArchive \
