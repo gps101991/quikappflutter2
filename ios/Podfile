@@ -36,6 +36,11 @@ target 'Runner' do
     inherit! :search_paths
   end
 end
+# Add these inside your Podfile if not present
+use_frameworks!
+use_modular_headers!
+
+# Patch to disable signing for Pods (you’ve done this, confirming)
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
@@ -45,6 +50,7 @@ post_install do |installer|
     end
   end
 end
+
 
 # post_install do |installer|
 #   installer.pods_project.targets.each do |target|

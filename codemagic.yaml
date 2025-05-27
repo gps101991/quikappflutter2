@@ -1961,18 +1961,32 @@ workflows:
         script: |
           set -e
           echo "🔧 Preparing Flutter build environment..."
+          echo "🧹 Cleaning iOS build artifacts..."
+            cd ios
+            rm -rf Pods Podfile.lock Runner.xcworkspace
+            pod cache clean --all
+            cd ..
+            flutter clean
+            echo "📦 Getting Flutter dependencies..."
+            flutter pub get
+            cd ios
+            pod install
+            cd ..
+          
+          
 
-          flutter clean
-
-          echo "📦 Getting Flutter dependencies..."
-          flutter pub get
-
-          echo "🔨 Setting up CocoaPods..."
-          cd ios
-          pod deintegrate || true
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
-          cd ..
+#
+#          flutter clean
+#
+#          echo "📦 Getting Flutter dependencies..."
+#          flutter pub get
+#
+#          echo "🔨 Setting up CocoaPods..."
+#          cd ios
+#          pod deintegrate || true
+#          rm -rf Pods Podfile.lock
+#          pod install --repo-update
+#          cd ..
 
       - name: Build and sign IPA
         script: |
