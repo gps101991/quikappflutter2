@@ -2013,7 +2013,7 @@ workflows:
                     <plist version="1.0">
                     <dict>
                       <key>method</key>
-                      <string>app-store</string>
+                      <string>ad-hoc</string>
                       <key>teamID</key>
                       <string>$APPLE_TEAM_ID</string>
                       <key>signingStyle</key>
