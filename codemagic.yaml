@@ -1873,6 +1873,22 @@ workflows:
         BUNDLE_ID: $BUNDLE_ID
         APPLE_TEAM_ID: $APPLE_TEAM_ID
     scripts:
+      - name: Set up Flutter
+        script: |
+          echo "🔧 Setting up Flutter environment..."
+          flutter clean
+          flutter pub get
+          
+          echo "🔍 Verifying Flutter setup..."
+          flutter --version
+          flutter doctor -v
+          
+          echo "⚙️ Preparing iOS build environment..."
+          flutter precache --ios
+          flutter build ios-framework --no-profile --no-release
+          
+          echo "✅ Flutter setup completed"
+      
       - *change_proj_name
       - *debug_env
       - *update_package_names
@@ -1970,50 +1986,74 @@ workflows:
         script: |
           echo "🔧 Preparing Flutter build environment..."
           
-          echo "🧹 Cleaning iOS build artifacts..."
-          cd ios
-          rm -rf Pods Podfile.lock Runner.xcworkspace
-          pod cache clean --all
-          cd ..
-          
+          echo "🧹 Cleaning build artifacts..."
           flutter clean
           
           echo "📦 Getting Flutter dependencies..."
           flutter pub get
           
-          echo "🔧 Setting up CocoaPods..."
+          echo "🔧 Setting up iOS build..."
           cd ios
           
-          # Update Podfile to handle frameworks
+          # Clean up any existing Pods
+          rm -rf Pods Podfile.lock
+          rm -rf .symlinks/plugins/*
+          rm -rf Flutter/Flutter.podspec
+          
+          # Ensure Flutter framework is properly set up
+          echo "⚙️ Setting up Flutter framework..."
+          flutter precache --ios
+          flutter pub get
+          
+          # Create Flutter framework symlinks
+          mkdir -p .symlinks/plugins
+          ln -sf "$(pwd)/.flutter-plugins-dependencies" .symlinks/plugins/
+          ln -sf "$(pwd)/Flutter" .symlinks/flutter
+          
+          # Update Podfile
+          echo "📝 Creating Podfile..."
           cat > Podfile <<EOF
           platform :ios, '13.0'
 
-          # Prevent Cocoapods from embedding a second Flutter framework
-          install! 'cocoapods', :disable_input_output_paths => true
+          # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+          project 'Runner', {
+            'Debug' => :debug,
+            'Profile' => :release,
+            'Release' => :release,
+          }
+
+          def flutter_root
+            generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+            unless File.exist?(generated_xcode_build_settings_path)
+              raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+            end
+
+            File.foreach(generated_xcode_build_settings_path) do |line|
+              matches = line.match(/FLUTTER_ROOT\=(.*)/)
+              return matches[1].strip if matches
+            end
+            raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+          end
+
+          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+          flutter_ios_podfile_setup
 
           target 'Runner' do
             use_frameworks!
             use_modular_headers!
-            
-            pod 'Flutter', :path => '.symlinks/flutter/ios-release'
-            
-            # Flutter Pods
-            plugin_pods_path = File.join('.symlinks', 'plugins')
-            if File.directory?(plugin_pods_path)
-              Dir.glob(File.join(plugin_pods_path, '**', '*.podspec')).each do |podspec|
-                pod File.basename(podspec, '.podspec'), :path => File.dirname(podspec)
-              end
-            end
-            
-            # Fix framework signing issues
+
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
             post_install do |installer|
               installer.pods_project.targets.each do |target|
+                flutter_additional_ios_build_settings(target)
+                
                 target.build_configurations.each do |config|
-                  config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
                   config.build_settings['ENABLE_BITCODE'] = 'NO'
                   config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-                  config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
-                  config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
                   
                   # Add arm64 to excluded architectures for simulators
                   if config.build_settings['SDKROOT'] == 'iphoneos'
@@ -2026,7 +2066,25 @@ workflows:
           EOF
           
           echo "📦 Installing pods..."
-          pod install --repo-update
+          # Try pod install multiple times if needed
+          max_attempts=3
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if pod install --repo-update; then
+              echo "✅ Pod installation successful on attempt $attempt"
+              break
+            else
+              echo "⚠️ Pod installation failed on attempt $attempt"
+              if [ $attempt -eq $max_attempts ]; then
+                echo "❌ Pod installation failed after $max_attempts attempts"
+                exit 1
+              fi
+              echo "🔄 Retrying pod installation..."
+              rm -rf Pods Podfile.lock
+              attempt=$((attempt + 1))
+            fi
+          done
+          
           cd ..
           
           echo "✅ Build preparation completed"
