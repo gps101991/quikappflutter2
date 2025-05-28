@@ -344,7 +344,7 @@ class ChatService {
     // Greetings
     if (_isGreeting(lowerMessage)) {
       return ChatResponse(
-        message: 'Hello! 👋\nWelcome to $_currentDomain\nI am an Intelligent Assistant. How can I help you today?',
+        message: 'Hello! 👋\nWelcome to $_currentDomain\nI am an Intelligent Assistant. \nHow can I help you today?',
       );
     }
 

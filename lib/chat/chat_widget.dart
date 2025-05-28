@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'chat_message.dart';
 import 'chat_service.dart';
 import 'dart:convert';
+import 'voice_input_card.dart';
 
 class ChatWidget extends StatefulWidget {
   final InAppWebViewController webViewController;
@@ -29,6 +30,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isLoading = false;
   bool _isListening = false;
+  bool _showVoiceCard = false;
 
   @override
   void initState() {
@@ -70,27 +72,37 @@ class _ChatWidgetState extends State<ChatWidget> {
       if (!_isListening) {
         bool available = await _speech.initialize();
         if (available) {
-          setState(() => _isListening = true);
+          setState(() {
+            _isListening = true;
+            _showVoiceCard = true;
+          });
           await _speech.listen(
             onResult: (result) {
               setState(() {
                 _messageController.text = result.recognizedWords;
                 if (result.finalResult) {
                   _isListening = false;
-                  // if (_messageController.text.isNotEmpty) {
-                  //   _handleSend();
-                  // }
+                  if (_messageController.text.isNotEmpty) {
+                    _handleSend();
+                    _showVoiceCard = false;
+                  }
                 }
               });
             },
           );
         }
       } else {
-        setState(() => _isListening = false);
+        setState(() {
+          _isListening = false;
+          _showVoiceCard = false;
+        });
         _speech.stop();
       }
     } catch (e) {
-      setState(() => _isListening = false);
+      setState(() {
+        _isListening = false;
+        _showVoiceCard = false;
+      });
       debugPrint('Speech recognition error: $e');
     }
   }
@@ -204,7 +216,10 @@ class _ChatWidgetState extends State<ChatWidget> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    return Center(child: Card(
+    return Stack(
+      children: [
+        Center(
+          child: Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -227,7 +242,27 @@ class _ChatWidgetState extends State<ChatWidget> {
           ],
         ),
       ),
-    ),);
+          ),
+        ),
+        if (_showVoiceCard)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black54,
+              child: VoiceInputCard(
+                isListening: _isListening,
+                recognizedText: _messageController.text,
+                onClose: () {
+                  setState(() {
+                    _isListening = false;
+                    _showVoiceCard = false;
+                  });
+                  _speech.stop();
+                },
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   String _getCleanHost(Uri uri) {
@@ -391,12 +426,12 @@ class _ChatWidgetState extends State<ChatWidget> {
                             children: [
                               Text(
                                 '${result.index}. ${result.title}',
-                                style: TextStyle(
+                              style: TextStyle(
                                   color: textColor,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                ),
                               ),
+                            ),
                               const SizedBox(height: 4),
                               Text(
                                 result.content,
@@ -405,22 +440,22 @@ class _ChatWidgetState extends State<ChatWidget> {
                                   fontSize: 14,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              ElevatedButton(
+                        const SizedBox(height: 8),
+                            ElevatedButton(
                                 onPressed: () => _handleLinkTap(
                                   result.url,
                                   highlightKeywords: result.matchedKeywords,
                                 ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context).primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                                child: const Text('View More'),
                               ),
+                              child: const Text('View More'),
+                            ),
                               const SizedBox(height: 16),
                             ],
                           ),
