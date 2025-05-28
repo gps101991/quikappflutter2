@@ -156,17 +156,21 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final size = MediaQuery.of(context).size;
+    return Center(child: Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
+        width: size.width * 0.9,
+        height: size.height * 0.9,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: Colors.white,
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildHeader(),
             Expanded(
@@ -176,15 +180,16 @@ class _ChatWidgetState extends State<ChatWidget> {
           ],
         ),
       ),
-    );
+    ),);
   }
+
   String _getCleanHost(Uri uri) {
     final host = uri.host;
     return host.startsWith('www.') ? host.substring(4) : host;
   }
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
       decoration: BoxDecoration(
         color: Theme.of(context).primaryColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
@@ -193,9 +198,9 @@ class _ChatWidgetState extends State<ChatWidget> {
         children: [
           const Icon(Icons.chat, color: Colors.white),
           const SizedBox(width: 8),
-           Expanded(
+          Expanded(
             child: Text(
-              '${_getCleanHost(Uri.parse(widget.currentUrl))} Assistant',
+              'Assistant',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -203,6 +208,16 @@ class _ChatWidgetState extends State<ChatWidget> {
               ),
             ),
           ),
+          //  Expanded(
+          //   child: Text(
+          //     '${_getCleanHost(Uri.parse(widget.currentUrl))} Assistant',
+          //     style: const TextStyle(
+          //       color: Colors.white,
+          //       fontSize: 18,
+          //       fontWeight: FontWeight.bold,
+          //     ),
+          //   ),
+          // ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white),
             onPressed: () async {
@@ -473,7 +488,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(
@@ -489,15 +504,43 @@ class _ChatWidgetState extends State<ChatWidget> {
       ),
       child: Row(
         children: [
-          // Microphone Button
-          FloatingActionButton(
-            onPressed: _startListening,
-            mini: true,
-            backgroundColor: _isListening ? Colors.red : Colors.grey.shade200,
-            child: Icon(
-              _isListening ? Icons.mic : Icons.mic_none,
-              color: _isListening ? Colors.white : Colors.grey.shade700,
-            ),
+          // Microphone Button with Wave Animation
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_isListening)
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(seconds: 1),
+                  builder: (context, value, child) {
+                    return Container(
+                      width: 40 + (value * 10),
+                      height: 40 + (value * 10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.red.withOpacity(0.3 - (value * 0.3)),
+                      ),
+                    );
+                  },
+                  onEnd: () {
+                    setState(() {
+                      // Restart animation
+                      if (_isListening) {
+                        setState(() {});
+                      }
+                    });
+                  },
+                ),
+              FloatingActionButton(
+                onPressed: _startListening,
+                mini: true,
+                backgroundColor: _isListening ? Colors.red : Colors.grey.shade200,
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: _isListening ? Colors.white : Colors.grey.shade700,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 8),
           // Text Input Field
@@ -543,7 +586,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Icon(Icons.send,color: Colors.white,),
+                          : const Icon(Icons.send, color: Colors.white,),
                     ),
                   ),
                 ],

@@ -524,10 +524,10 @@ class _MainHomeState extends State<MainHome> {
                       // Chat Widget
                       if (isChatVisible && webViewController != null && isChatBot)
                         Positioned(
-                          right: 16,
-                          bottom: 80,
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          height: MediaQuery.of(context).size.height * 0.6,
+                          right: MediaQuery.of(context).size.width * 0.05,
+                          bottom: MediaQuery.of(context).size.height * 0.05,
+                          top: MediaQuery.of(context).size.height * 0.05,
+                          left: MediaQuery.of(context).size.width * 0.05,
                           child: ChatWidget(
                             webViewController: webViewController!,
                             currentUrl: InitialCurrentURL,
@@ -572,6 +572,10 @@ class _MainHomeState extends State<MainHome> {
         ),
         bottomNavigationBar: isBottomMenu
             ? BottomAppBar(
+          height: 70,
+          padding: EdgeInsets.all(0),
+          clipBehavior: Clip.none,
+          notchMargin: 3.0,
                 color: _parseHexColor(widget.backgroundColor),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
