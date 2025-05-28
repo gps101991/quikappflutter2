@@ -504,10 +504,10 @@ $aboutContent
 $contactInfo
 
 [${contactUrl}](${contactUrl})''',
-      buttons: [{
-        'text': 'View More',
-        'url': contactUrl,
-      }],
+      // buttons: [{
+      //   'text': 'View More',
+      //   'url': contactUrl,
+      // }],
       // links: [{
       //   'url': contactUrl,
       //   'title': contactUrl,
@@ -535,47 +535,56 @@ $contactInfo
     }
 
     final messageLines = <String>[];
-    final buttons = <Map<String, String>>[];
-    final links = <Map<String, String>>[];
-    
-    // Get all similar terms used in the search
+    final searchResults = <SearchResult>[];
     final allTerms = <String>{};
     final queryWords = query.toLowerCase().split(' ').where((w) => w.length > 2);
+    
+    // Generate similar terms and variations
     for (final word in queryWords) {
       allTerms.add(word);
       allTerms.addAll(_generateSimilarWords(word));
     }
     
-    // Add related terms section if we have similar terms
+    // Add related terms section
     if (allTerms.length > 1) {
-      messageLines.add('**Related terms:** ${allTerms.join(', ')}');
+      messageLines.add('**Related keywords found:** ${allTerms.join(', ')}');
       messageLines.add('');
     }
     
     messageLines.add('Here are the most relevant results:');
-    
+    messageLines.add('');
+
+    var index = 1;
     for (final entry in relevantContent.entries) {
       final content = entry.value;
       final title = _knowledgeBase[entry.key]?.title ?? 'Untitled';
-      
+      final matchedKeywords = allTerms.where((term) => 
+        content.text.toLowerCase().contains(term.toLowerCase()) ||
+        title.toLowerCase().contains(term.toLowerCase())
+      ).toList();
+
+      searchResults.add(SearchResult(
+        title: title,
+        content: content.text,
+        url: entry.key,
+        matchedKeywords: matchedKeywords,
+        index: index,
+      ));
+
       messageLines.addAll([
-        '',
-        '**$title**',
-        '',
+        '$index. **$title**',
         content.text,
+        '[View more](${entry.key})',
         '',
-        '[View details](${entry.key})',
       ]);
-      
-      links.add({
-        'url': entry.key,
-        'title': title,
-      });
+
+      index++;
     }
 
     return ChatResponse(
       message: messageLines.join('\n'),
-      links: links,
+      searchResults: searchResults,
+      keywords: allTerms.toList(),
     );
   }
 
@@ -666,29 +675,28 @@ $contactInfo
 
   Set<String> _generateSimilarWords(String word) {
     final similar = <String>{};
+    final lower = word.toLowerCase();
     
-    // Common variations
-    similar.add(word.replaceAll('-', ' ')); // t-shirt -> t shirt
-    similar.add(word.replaceAll(' ', '-')); // t shirt -> t-shirt
-    similar.add(word.replaceAll(' ', '')); // t shirt -> tshirt
+    // Add common variations
+    similar.add(lower);
+    similar.add(word.toUpperCase());
+    similar.add('${word[0].toUpperCase()}${word.substring(1).toLowerCase()}');
     
-    // Common plural/singular forms
-    if (word.endsWith('s')) {
-      similar.add(word.substring(0, word.length - 1)); // shirts -> shirt
+    // Add hyphenated and space variations
+    if (word.contains('-')) {
+      similar.add(word.replaceAll('-', ' '));
+      similar.add(word.replaceAll('-', ''));
+    } else if (word.contains(' ')) {
+      similar.add(word.replaceAll(' ', '-'));
+      similar.add(word.replaceAll(' ', ''));
     } else {
-      similar.add('${word}s'); // shirt -> shirts
+      // Try common prefix/suffix variations
+      if (word.endsWith('s')) similar.add(word.substring(0, word.length - 1));
+      if (word.endsWith('es')) similar.add(word.substring(0, word.length - 2));
+      if (word.endsWith('ing')) similar.add(word.substring(0, word.length - 3));
+      if (word.endsWith('ed')) similar.add(word.substring(0, word.length - 2));
     }
     
-    // Common misspellings
-    if (word.contains('ph')) {
-      similar.add(word.replaceAll('ph', 'f')); // graphic -> grafic
-    }
-    if (word.contains('f')) {
-      similar.add(word.replaceAll('f', 'ph')); // grafic -> graphic
-    }
-    
-    // Remove duplicates and the original word
-    similar.remove(word);
     return similar;
   }
 

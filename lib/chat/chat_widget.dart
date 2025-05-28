@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'chat_message.dart';
 import 'chat_service.dart';
+import 'dart:convert';
 
 class ChatWidget extends StatefulWidget {
   final InAppWebViewController webViewController;
@@ -137,11 +138,57 @@ class _ChatWidgetState extends State<ChatWidget> {
     }
   }
 
-  Future<void> _handleLinkTap(String url) async {
+  Future<void> _handleLinkTap(String url, {List<String>? highlightKeywords}) async {
     try {
       await widget.webViewController.loadUrl(
         urlRequest: URLRequest(url: WebUri(url))
       );
+      
+      if (highlightKeywords != null && highlightKeywords.isNotEmpty) {
+        // Add a delay to let the page load before highlighting
+        await Future.delayed(const Duration(milliseconds: 500));
+        final js = '''
+          function highlightKeywords(keywords) {
+            const body = document.body;
+            const walker = document.createTreeWalker(
+              body, 
+              NodeFilter.SHOW_TEXT,
+              null,
+              false
+            );
+            
+            const matches = [];
+            let node;
+            while (node = walker.nextNode()) {
+              const text = node.textContent.toLowerCase();
+              if (keywords.some(kw => text.includes(kw.toLowerCase()))) {
+                matches.push(node);
+              }
+            }
+            
+            matches.forEach(node => {
+              const span = document.createElement('span');
+              span.className = 'keyword-highlight';
+              span.style.backgroundColor = '#FFEB3B';
+              span.style.transition = 'background-color 3s ease';
+              node.parentNode.insertBefore(span, node);
+              span.appendChild(node);
+              
+              setTimeout(() => {
+                span.style.backgroundColor = 'transparent';
+                setTimeout(() => {
+                  const parent = span.parentNode;
+                  parent.insertBefore(span.firstChild, span);
+                  parent.removeChild(span);
+                }, 3000);
+              }, 100);
+            });
+          }
+          highlightKeywords(${jsonEncode(highlightKeywords)});
+        ''';
+        await widget.webViewController.evaluateJavascript(source: js);
+      }
+      
       if (mounted) {
         widget.onVisibilityChanged(false);
       }
@@ -336,43 +383,47 @@ class _ChatWidgetState extends State<ChatWidget> {
                           fontSize: 16,
                         ),
                       ),
-                      if (message.links != null && message.links!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        ...message.links!.map((link) => 
-                          TextButton(
-                            onPressed: () => _handleLinkTap(link['url']!),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              alignment: Alignment.centerLeft,
-                            ),
-                            child: Text(
-                              link['title'] ?? link['url']!,
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (message.links != null && message.links!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: message.links!.map((link) =>
-                            ElevatedButton(
-                              onPressed: () => _handleLinkTap(link['url']!),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
+                      if (message.searchResults != null && message.searchResults!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        ...message.searchResults!.map((result) => 
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${result.index}. ${result.title}',
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              child: const Text('View More'),
-                            ),
-                          ).toList(),
+                              const SizedBox(height: 4),
+                              Text(
+                                result.content,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton(
+                                onPressed: () => _handleLinkTap(
+                                  result.url,
+                                  highlightKeywords: result.matchedKeywords,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                child: const Text('View More'),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
                         ),
                       ],
                     ],
