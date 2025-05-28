@@ -534,9 +534,23 @@ $contactInfo
       );
     }
 
+    final messageLines = <String>[];
     final buttons = <Map<String, String>>[];
     final links = <Map<String, String>>[];
-    final messageLines = <String>[];
+    
+    // Get all similar terms used in the search
+    final allTerms = <String>{};
+    final queryWords = query.toLowerCase().split(' ').where((w) => w.length > 2);
+    for (final word in queryWords) {
+      allTerms.add(word);
+      allTerms.addAll(_generateSimilarWords(word));
+    }
+    
+    // Add related terms section if we have similar terms
+    if (allTerms.length > 1) {
+      messageLines.add('**Related terms:** ${allTerms.join(', ')}');
+      messageLines.add('');
+    }
     
     messageLines.add('Here are the most relevant results:');
     
@@ -550,23 +564,17 @@ $contactInfo
         '',
         content.text,
         '',
-        '[${entry.key}](${entry.key})',
+        '[View details](${entry.key})',
       ]);
       
-      // buttons.add({
-      //   'text': 'View More',
-      //   'url': entry.key,
-      // });
-      
-      // links.add({
-      //   'url': entry.key,
-      //   'title': entry.key,
-      // });
+      links.add({
+        'url': entry.key,
+        'title': title,
+      });
     }
 
     return ChatResponse(
       message: messageLines.join('\n'),
-      buttons: buttons,
       links: links,
     );
   }
@@ -575,6 +583,12 @@ $contactInfo
     query = query.toLowerCase();
     final results = <String, ContentSection>{};
     final words = query.split(' ').where((w) => w.length > 2).toList();
+    final similarWords = <String, Set<String>>{};
+    
+    // Generate similar words for each search term
+    for (final word in words) {
+      similarWords[word] = _generateSimilarWords(word);
+    }
     
     for (final entry in _knowledgeBase.values) {
       if (entry.domain != _currentDomain || entry.isStale) continue;
@@ -582,6 +596,7 @@ $contactInfo
       var maxRelevance = 0;
       ContentSection? bestMatch;
       String? matchedText;
+      final List<String> matchedTerms = [];
 
       // Check title
       final lowerTitle = entry.title.toLowerCase();
@@ -600,11 +615,22 @@ $contactInfo
         for (final paragraph in entry.paragraphs) {
           final lowerParagraph = paragraph.toLowerCase();
           var relevance = 0;
+          final localMatchedTerms = <String>[];
           
-          // Calculate relevance based on word matches
+          // Calculate relevance based on word matches and similar words
           for (final word in words) {
             if (lowerParagraph.contains(word)) {
               relevance += 20;
+              localMatchedTerms.add(word);
+            } else {
+              // Check for similar words
+              for (final similar in similarWords[word]!) {
+                if (lowerParagraph.contains(similar)) {
+                  relevance += 15; // Slightly lower score for similar matches
+                  localMatchedTerms.add(similar);
+                  break;
+                }
+              }
             }
           }
 
@@ -612,6 +638,8 @@ $contactInfo
           if (relevance > maxRelevance) {
             maxRelevance = relevance;
             matchedText = paragraph;
+            matchedTerms.clear();
+            matchedTerms.addAll(localMatchedTerms);
             bestMatch = ContentSection(
               text: _extractRelevantSnippet(paragraph, query),
               type: 'paragraph',
@@ -621,34 +649,89 @@ $contactInfo
         }
       }
 
-      if (bestMatch != null && maxRelevance >= 20) {
+      if (bestMatch != null && maxRelevance >= 15) { // Lower threshold to include similar matches
         results[entry.url] = bestMatch;
       }
     }
 
-    return Map.fromEntries(
+    // Sort results by relevance and take top 5
+    final sortedResults = Map.fromEntries(
       results.entries.toList()
         ..sort((a, b) => b.value.relevance.compareTo(a.value.relevance))
         ..take(5)
     );
+
+    return sortedResults;
+  }
+
+  Set<String> _generateSimilarWords(String word) {
+    final similar = <String>{};
+    
+    // Common variations
+    similar.add(word.replaceAll('-', ' ')); // t-shirt -> t shirt
+    similar.add(word.replaceAll(' ', '-')); // t shirt -> t-shirt
+    similar.add(word.replaceAll(' ', '')); // t shirt -> tshirt
+    
+    // Common plural/singular forms
+    if (word.endsWith('s')) {
+      similar.add(word.substring(0, word.length - 1)); // shirts -> shirt
+    } else {
+      similar.add('${word}s'); // shirt -> shirts
+    }
+    
+    // Common misspellings
+    if (word.contains('ph')) {
+      similar.add(word.replaceAll('ph', 'f')); // graphic -> grafic
+    }
+    if (word.contains('f')) {
+      similar.add(word.replaceAll('f', 'ph')); // grafic -> graphic
+    }
+    
+    // Remove duplicates and the original word
+    similar.remove(word);
+    return similar;
   }
 
   String _extractRelevantSnippet(String text, String query) {
     final sentences = text.split(RegExp(r'[.!?]+\s+')); 
     final lowerQuery = query.toLowerCase();
+    final queryWords = lowerQuery.split(' ').where((w) => w.length > 2).toSet();
     
-    // Find the first sentence containing the query
-    var matchingSentenceIndex = sentences.indexWhere(
-      (s) => s.toLowerCase().contains(lowerQuery)
-    );
+    // Score each sentence based on query word matches
+    var bestScore = 0;
+    var bestSentenceIndex = 0;
     
-    if (matchingSentenceIndex == -1) {
-      matchingSentenceIndex = 0;
+    for (var i = 0; i < sentences.length; i++) {
+      final lowerSentence = sentences[i].toLowerCase();
+      var score = 0;
+      
+      // Direct query match
+      if (lowerSentence.contains(lowerQuery)) {
+        score += 100;
+      }
+      
+      // Individual word matches
+      for (final word in queryWords) {
+        if (lowerSentence.contains(word)) {
+          score += 20;
+        }
+        // Check similar words
+        for (final similar in _generateSimilarWords(word)) {
+          if (lowerSentence.contains(similar)) {
+            score += 15;
+          }
+        }
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestSentenceIndex = i;
+      }
     }
     
-    // Take 2 sentences starting from the matching one
-    final startIdx = matchingSentenceIndex;
-    final endIdx = math.min(startIdx + 2, sentences.length);
+    // Take 2-3 sentences starting from the best matching one
+    final startIdx = bestSentenceIndex;
+    final endIdx = math.min(startIdx + 3, sentences.length);
     
     var snippet = sentences.sublist(startIdx, endIdx).join('. ').trim();
     if (snippet.length > 300) {
