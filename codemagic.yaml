@@ -2129,6 +2129,33 @@ workflows:
           </plist>
           EOF
 
+          # Update Pods project build settings
+          echo "🔧 Updating Pods project build settings..."
+          cd ios
+          
+          # Create a script to update Pods project settings
+          cat > update_pods_settings.rb <<'EOF'
+          require 'xcodeproj'
+
+          project_path = 'Pods/Pods.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+
+          project.targets.each do |target|
+            target.build_configurations.each do |config|
+              config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
+              config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+              config.build_settings['CODE_SIGN_IDENTITY'] = ''
+              config.build_settings['DEVELOPMENT_TEAM'] = ''
+            end
+          end
+
+          project.save
+          EOF
+
+          # Run the Ruby script to update Pods project
+          ruby update_pods_settings.rb
+          cd ..
+
           echo "🏗️ Building Flutter iOS app..."
           flutter build ios --release --no-codesign \
             --dart-define=WEB_URL="$WEB_URL" \
