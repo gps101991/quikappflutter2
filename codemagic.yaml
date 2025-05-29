@@ -1368,8 +1368,7 @@ definitions:
         # Create ExportOptions.plist
         cat <<EOF > ExportOptions.plist
         <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
         <key>method</key>
@@ -1392,7 +1391,8 @@ definitions:
         xcodebuild -exportArchive \
         -archivePath build/ios/archive/Runner.xcarchive \
         -exportPath build/ios/ipa \
-        -exportOptionsPlist ExportOptions.plist
+        -exportOptionsPlist ExportOptions.plist \
+        -allowProvisioningUpdates
 
         echo "✅ IPA export complete: build/ios/ipa"
 
@@ -1536,8 +1536,7 @@ definitions:
             # ExportOptions.plist
             cat <<EOF > ExportOptions.plist
             <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
             <key>method</key>
@@ -1560,7 +1559,8 @@ definitions:
             xcodebuild -exportArchive \
             -archivePath build/ios/archive/Runner.xcarchive \
             -exportPath build/ios/ipa \
-            -exportOptionsPlist ExportOptions.plist
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates
 
             echo "✅ IPA export complete: build/ios/ipa"
             security delete-keychain "$KEYCHAIN_NAME"
@@ -2163,16 +2163,14 @@ workflows:
             -scheme Runner \
             -configuration Release \
             -archivePath build/ios/archive.xcarchive \
-            -sdk iphoneos \
-            -allowProvisioningUpdates \
-            -destination generic/platform=iOS \
-            -derivedDataPath ios/build \
-            -quiet \
-            archive \
-            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
-            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            -destination 'generic/platform=iOS' \
+            clean archive \
+            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"  || {
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" || {
                         echo "❌ Archiving Build failed"
                         exit 1
                       }
