@@ -83,7 +83,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 if (result.finalResult) {
                   _isListening = false;
                   if (_messageController.text.isNotEmpty) {
-                    _handleSend();
+                    // _handleSend();
                     _showVoiceCard = false;
                   }
                 }
