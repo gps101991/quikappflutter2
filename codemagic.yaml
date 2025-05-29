@@ -2146,10 +2146,10 @@ workflows:
           </dict>
           </plist>
           EOF
-          cd ios
+            cd ios
           
-          # Create a script to update Pods project settings
-          cat > update_pods_settings.rb <<'EOF'
+            # Create a script to update Pods project settings
+            cat > update_pods_settings.rb <<'EOF'
             require 'xcodeproj'
             
             def update_pod_settings(config)
@@ -2193,8 +2193,17 @@ workflows:
             end
             runner_project.save
             EOF
+
+          # ✅ Run the ruby script
+          # ruby update_pods_settings.rb
             
-          cd ..
+            if [ -d "Pods" ]; then
+              ruby update_pods_settings.rb
+            else
+              echo "⚠️ Skipping Ruby code signing override because Pods directory is missing."
+            fi
+            
+            cd ..
           
           echo "🏗️ Building Flutter iOS app..."
           flutter build ios --release --no-codesign || {
