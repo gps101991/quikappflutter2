@@ -1819,8 +1819,8 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
-      android_signing:
-        - keystore_reference
+#      android_signing:
+#        - keystore_reference
       vars:
         VERSION_NAME: ${VERSION_NAME}
         VERSION_CODE: ${VERSION_CODE}
