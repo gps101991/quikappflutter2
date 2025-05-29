@@ -1816,23 +1816,56 @@ workflows:
 
   android-workflow:
     name: Android Workflow
-    max_build_duration: 60
+    max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
+      android_signing:
+        - keystore_reference
+      vars:
+        VERSION_NAME: ${VERSION_NAME}
+        VERSION_CODE: ${VERSION_CODE}
+        APP_NAME: ${APP_NAME}
+        ORG_NAME: ${ORG_NAME}
+        WEB_URL: ${WEB_URL}
+        PKG_NAME: ${PKG_NAME}
+        BUNDLE_ID: ${BUNDLE_ID}
+        EMAIL_ID: ${EMAIL_ID}
+        PUSH_NOTIFY: ${PUSH_NOTIFY}
+        IS_CHATBOT: ${IS_CHATBOT}
+        IS_DEEPLINK: ${IS_DEEPLINK}
+        IS_SPLASH: ${IS_SPLASH}
+        IS_PULLDOWN: ${IS_PULLDOWN}
+        IS_BOTTOMMENU: ${IS_BOTTOMMENU}
+        IS_LOAD_IND: ${IS_LOAD_IND}
+        IS_CAMERA: ${IS_CAMERA}
+        IS_LOCATION: ${IS_LOCATION}
+        IS_MIC: ${IS_MIC}
+        IS_NOTIFICATION: ${IS_NOTIFICATION}
+        IS_CONTACT: ${IS_CONTACT}
+        IS_BIOMETRIC: ${IS_BIOMETRIC}
+        IS_CALENDAR: ${IS_CALENDAR}
+        IS_STORAGE: ${IS_STORAGE}
+        LOGO_URL: ${LOGO_URL}
+        SPLASH: ${SPLASH}
+        SPLASH_BG: ${SPLASH_BG}
+        SPLASH_BG_COLOR: ${SPLASH_BG_COLOR}
+        SPLASH_TAGLINE: ${SPLASH_TAGLINE}
+        SPLASH_TAGLINE_COLOR: ${SPLASH_TAGLINE_COLOR}
+        SPLASH_ANIMATION: ${SPLASH_ANIMATION}
+        SPLASH_DURATION: ${SPLASH_DURATION}
+        BOTTOMMENU_ITEMS: ${BOTTOMMENU_ITEMS}
+        BOTTOMMENU_BG_COLOR: ${BOTTOMMENU_BG_COLOR}
+        BOTTOMMENU_ICON_COLOR: ${BOTTOMMENU_ICON_COLOR}
+        BOTTOMMENU_TEXT_COLOR: ${BOTTOMMENU_TEXT_COLOR}
+        BOTTOMMENU_ACTIVE_TAB_COLOR: ${BOTTOMMENU_ACTIVE_TAB_COLOR}
+        BOTTOMMENU_ICON_POSITION: ${BOTTOMMENU_ICON_POSITION}
+        BOTTOMMENU_VISIBLE_ON: ${BOTTOMMENU_VISIBLE_ON}
       flutter: stable
-      java: 17
+      xcode: latest
+      cocoapods: default
+      java: 11
+
     scripts:
-      - name: Uninstall existing app
-        script: |
-          echo "🗑️ Uninstalling existing app if present..."
-          adb devices | grep -v "List" | while read -r line; do
-            if [ ! -z "$line" ]; then
-              device_id=$(echo $line | cut -f1)
-              echo "📱 Uninstalling from device: $device_id"
-              adb -s $device_id uninstall "$PKG_NAME" || true
-            fi
-          done
-          echo "✅ Uninstall step completed"
       - *debug_env
       - *change_proj_name
       - *update_package_names
@@ -1846,18 +1879,26 @@ workflows:
       - *get_splash
       - *set_launcher_icons
       - *build_apk_release
+
     artifacts:
       - build/**/outputs/apk/**/*.apk
-      - build/**/outputs/bundle/**/*.aab
-#      - build/**/outputs/mapping/release/mapping.txt
+      - build/**/outputs/**/*.aab
+      - build/**/outputs/**/mapping.txt
       - flutter_drive.log
+      - flutter_build_apk.log
+      - flutter_build_aab.log
+
     publishing:
       email:
         recipients:
-          - $EMAIL_ID
+          - ${EMAIL_ID}
         notify:
           success: true
           failure: true
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
 
   ios-workflow:
     name: iOS Workflow

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.quikappflutter2"
+    namespace = "com.quikapp.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -20,16 +20,31 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.quikappflutter2"
+        applicationId = "com.quikapp.mobile"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 2  // Increment this for each update
+        versionName = "1.0.1"  // Update this for each release
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/release.keystore")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "your_keystore_password"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "your_key_alias"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "your_key_password"
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
 }
