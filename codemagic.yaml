@@ -2146,78 +2146,62 @@ workflows:
           </dict>
           </plist>
           EOF
-            cd ios
-          
-            # Create a script to update Pods project settings
-            cat > update_pods_settings.rb <<'EOF'
-            require 'xcodeproj'
-            
-            def update_pod_settings(config)
-              config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
-              config.build_settings.delete('CODE_SIGN_IDENTITY')
-              config.build_settings.delete('CODE_SIGNING_REQUIRED')
-              config.build_settings.delete('CODE_SIGNING_ALLOWED')
-              config.build_settings.delete('PROVISIONING_PROFILE')
-              config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER')
-              config.build_settings.delete('DEVELOPMENT_TEAM')
-            end
-            
-            def update_runner_settings(config)
-              config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-              config.build_settings['DEVELOPMENT_TEAM'] = ENV['APPLE_TEAM_ID']
-              config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']
-              config.build_settings['CODE_SIGN_IDENTITY'] = ENV['CODE_SIGN_IDENTITY']
-            end
-            
-            # Update Pods project
-            pod_project_path = 'Pods/Pods.xcodeproj'
-            pod_project = Xcodeproj::Project.open(pod_project_path)
-            
-            pod_project.targets.each do |target|
-              target.build_configurations.each do |config|
-                update_pod_settings(config)
-              end
-            end
-            pod_project.save
-            
-            # Update Runner project
-            runner_project_path = 'Runner.xcodeproj'
-            runner_project = Xcodeproj::Project.open(runner_project_path)
-            
-            runner_project.targets.each do |target|
-              if target.name == 'Runner'
-                target.build_configurations.each do |config|
-                  update_runner_settings(config)
-                end
-              end
-            end
-            runner_project.save
-            EOF
 
-          # ✅ Run the ruby script
-          # ruby update_pods_settings.rb
-            
-            if [ -d "Pods" ]; then
-              ruby update_pods_settings.rb
-            else
-              echo "⚠️ Skipping Ruby code signing override because Pods directory is missing."
-            fi
-            
-            cd ..
-          
           echo "🏗️ Building Flutter iOS app..."
-          flutter build ios --release --no-codesign || {
-            echo "❌ Flutter build failed"
-            exit 1
-          }
+          flutter build ios --release --no-codesign \
+            --dart-define=WEB_URL="$WEB_URL" \
+            --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
+            --dart-define=PKG_NAME="$PKG_NAME" \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=ORG_NAME="$ORG_NAME" \
+            --dart-define=VERSION_NAME="$VERSION_NAME" \
+            --dart-define=VERSION_CODE="$VERSION_CODE" \
+            --dart-define=EMAIL_ID="$EMAIL_ID" \
+            --dart-define=IS_SPLASH="$IS_SPLASH" \
+            --dart-define=SPLASH="$SPLASH" \
+            --dart-define=SPLASH_BG="$SPLASH_BG" \
+            --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
+            --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
+            --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
+            --dart-define=SPLASH_TAGLINE_COLOR="$SPLASH_TAGLINE_COLOR" \
+            --dart-define=SPLASH_DURATION="$SPLASH_DURATION" \
+            --dart-define=IS_PULLDOWN="$IS_PULLDOWN" \
+            --dart-define=LOGO_URL="$LOGO_URL" \
+            --dart-define=IS_BOTTOMMENU="$IS_BOTTOMMENU" \
+            --dart-define=IS_DEEPLINK="$IS_DEEPLINK" \
+            --dart-define=IS_LOAD_IND="$IS_LOAD_IND" \
+            --dart-define=IS_CHATBOT="$IS_CHATBOT" \
+            --dart-define=IS_CAMERA="$IS_CAMERA" \
+            --dart-define=IS_LOCATION="$IS_LOCATION" \
+            --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
+            --dart-define=IS_MIC="$IS_MIC" \
+            --dart-define=IS_CONTACT="$IS_CONTACT" \
+            --dart-define=IS_CALENDAR="$IS_CALENDAR" \
+            --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
+            --dart-define=IS_STORAGE="$IS_STORAGE" || {
+              echo "❌ Flutter build failed"
+              exit 1
+            }
+
+          cd ios
+
+          # Update project settings
+          echo "🔧 Updating Xcode project settings..."
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string $BUNDLE_ID" "Runner/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "Runner/Info.plist"
+          
+          # Clean derived data and archives
+          echo "🧹 Cleaning Xcode derived data..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          rm -rf ~/Library/Developer/Xcode/Archives/*
 
           echo "📦 Archiving app..."
-          xcodebuild -workspace "ios/Runner.xcworkspace" \
-            -scheme "Runner" \
+          xcodebuild clean archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
             -configuration Release \
-            -archivePath "build/ios/archive/Runner.xcarchive" \
+            -archivePath "../build/ios/archive/Runner.xcarchive" \
             -destination 'generic/platform=iOS' \
-            archive \
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PROVISIONING_PROFILE="$PROFILE_UUID" \
@@ -2234,15 +2218,24 @@ workflows:
 
           echo "📦 Exporting IPA..."
           xcodebuild -exportArchive \
-            -archivePath "build/ios/archive/Runner.xcarchive" \
-            -exportPath "build/ios/ipa" \
-            -exportOptionsPlist "ios/ExportOptions.plist" \
+            -archivePath "../build/ios/archive/Runner.xcarchive" \
+            -exportPath "../build/ios/ipa" \
+            -exportOptionsPlist "ExportOptions.plist" \
             -allowProvisioningUpdates || {
               echo "❌ IPA export failed"
               exit 1
             }
 
+          cd ..
+
+          # Verify IPA was created
+          if [ ! -f "build/ios/ipa/Runner.ipa" ]; then
+            echo "❌ IPA file not found at expected location"
+            exit 1
+          fi
+
           echo "✅ IPA build and signing completed successfully"
+          echo "📱 IPA file location: build/ios/ipa/Runner.ipa"
 
       - name: Clean up
         script: |
@@ -2259,6 +2252,7 @@ workflows:
       - build/ios/iphoneos/Runner.app
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
     publishing:
       email:
