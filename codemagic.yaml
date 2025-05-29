@@ -2108,7 +2108,7 @@ workflows:
           echo "✅ Build preparation completed"
 
       - name: Build and sign IPA
-        script: |\
+        script: |
           set -euo pipefail
           trap 'echo "❌ Error on line $LINENO"' ERR
 
