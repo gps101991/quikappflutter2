@@ -137,7 +137,7 @@ definitions:
         echo "SPLASH_TAGLINE_COLOR: $SPLASH_TAGLINE_COLOR"
         echo "SPLASH_ANIMATION: $SPLASH_ANIMATION"
         echo "SPLASH_DURATION: $SPLASH_DURATION"
-                
+        
         echo "*********** Bottom Navigation Configuration ***********"
         echo "BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS"
         echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"  
@@ -292,31 +292,31 @@ definitions:
         # Update Dart imports
           echo "🔄 Updating Dart package imports..."
           grep -rl "package:$OLD_NAME" lib/ | xargs sed -i '' "s/package:$OLD_NAME/package:$SANITIZED_NAME/g"
-          
-         
-          
+        
+        
+        
           # iOS: Update CFBundleName in Info.plist
           echo "🛠️ Updating iOS CFBundleName..."
           plutil -replace CFBundleName -string "$APP_NAME" ios/Runner/Info.plist
-          
+        
           # Optional: Rename folder (if not on CI/CD)
           # cd ..
           # mv "$OLD_NAME" "$SANITIZED_NAME"
           # cd "$SANITIZED_NAME"
-          
+        
           # Clean and get packages
           flutter clean
           flutter pub get
-          
+        
           echo "✅ Project renamed to '$SANITIZED_NAME'"
-          
+        
           echo "🚀 iOS CFBundleName set to '$APP_NAME'"
 
     - &get_logo
       name: Get logo image from logoUrl
       script: |
         echo "🧹 Deleting old splash and logo assets..."
-  
+        
         if [ -f assets/images/logo.png ]; then
         rm assets/images/logo.png
         echo "✅ Deleted: assets/images/logo.png"
@@ -459,7 +459,7 @@ definitions:
             local retry_delay=5
             local attempt=1
             local WGET_OPTS=""
-            
+        
             while [ $attempt -le $max_retries ]; do
                 echo "➡️ Attempt $attempt to download $url"
                 wget --spider --quiet "$url"
@@ -469,7 +469,7 @@ definitions:
                 else
                     WGET_OPTS=""
                 fi
-                
+        
                 wget $WGET_OPTS -O "$output" "$url"
                 if [ $? -eq 0 ]; then
                     echo "✅ Successfully downloaded $output"
@@ -477,14 +477,14 @@ definitions:
                 else
                     echo "❌ Download failed on attempt $attempt"
                 fi
-                
+        
                 attempt=$((attempt + 1))
                 if [ $attempt -le $max_retries ]; then
                     echo "⏳ Waiting $retry_delay seconds before retry..."
                     sleep $retry_delay
                 fi
             done
-            
+        
             echo "🚨 Failed to download $url after $max_retries attempts."
             return 1
         }
@@ -502,7 +502,7 @@ definitions:
             # Check if Firebase classpath is already present in the project-level build.gradle
             if ! grep -q 'com.google.gms:google-services' $PROJECT_BUILD_FILE; then
                 echo "✅ Firebase classpath not found, injecting..."
-                
+        
                 if ! grep -q 'buildscript {' $PROJECT_BUILD_FILE; then
                     # No buildscript block found – inject the entire block at the top
                     echo 'buildscript {
@@ -535,13 +535,13 @@ definitions:
             else
                 echo "✅ Google services plugin already applied, skipping"
             fi
-                        
+        
             echo "📥 Downloading google-services.json..."
             mkdir -p android/app
 
             # Download Firebase configuration file
             download_with_retry "$firebase_config_android" "android/app/google-services.json"
-                        
+        
             echo "🔧 Updating values.xml file"
             mkdir -p android/app/src/main/res/values/
             cat > android/app/src/main/res/values/values.xml << 'EOF'
@@ -564,120 +564,120 @@ definitions:
     - &Inject_Firebase_Services
       name: Inject Google Services Plugin
       script: |
-          if [ -f android/app/google-services.json ]; then
-          echo "✅ File found"
-          else
-          echo "❌ Missing google-services.json"
-          exit 1
-          fi
-          set -e
-          
-          if [ "$PUSH_NOTIFY" = "true" ]; then
-          echo "✅ Google Services Plugin: Start injecting..."
+        if [ -f android/app/google-services.json ]; then
+        echo "✅ File found"
+        else
+        echo "❌ Missing google-services.json"
+        exit 1
+        fi
+        set -e
         
-          FIREBASE_CLASSPATH='classpath("com.google.gms:google-services:4.3.15")'
-          DESUGAR_DEP='implementation("com.android.tools:desugar_jdk_libs:2.0.4")'
+        if [ "$PUSH_NOTIFY" = "true" ]; then
+        echo "✅ Google Services Plugin: Start injecting..."
         
-          PROJECT_BUILD_FILE="android/build.gradle.kts"
-          APP_BUILD_FILE="android/app/build.gradle.kts"
+        FIREBASE_CLASSPATH='classpath("com.google.gms:google-services:4.3.15")'
+        DESUGAR_DEP='implementation("com.android.tools:desugar_jdk_libs:2.0.4")'
         
-          # ───── Add classpath to android/build.gradle.kts ─────
-          if ! grep -q "com.google.gms:google-services" "$PROJECT_BUILD_FILE"; then
-          echo "🔧 Injecting Firebase classpath into $PROJECT_BUILD_FILE..."
-          awk '
-          /buildscript\s*{/ { print; in_block=1; next }
-          in_block && /dependencies\s*{/ {
-          print; print "        classpath(\"com.google.gms:google-services:4.3.15\")"; in_block=0; next
-          }
-          { print }
-          ' "$PROJECT_BUILD_FILE" > tmp && mv tmp "$PROJECT_BUILD_FILE"
-          echo "✅ Classpath injected."
-          else
-          echo "✅ Firebase classpath already exists."
-          fi
+        PROJECT_BUILD_FILE="android/build.gradle.kts"
+        APP_BUILD_FILE="android/app/build.gradle.kts"
         
-          # ───── Apply plugin in android/app/build.gradle.kts ─────
-          if grep -q "plugins\s*{" "$APP_BUILD_FILE"; then
-          if ! grep -q 'id("com.google.gms.google-services")' "$APP_BUILD_FILE"; then
-          echo "🔧 Applying Google Services plugin..."
-          sed -i '' '/plugins\s*{/a\
-          id("com.google.gms.google-services")
-          ' "$APP_BUILD_FILE"
-          echo "✅ Plugin applied."
-          else
-          echo "✅ Google Services plugin already applied."
-          fi
-          else
-          echo "❌ plugins block not found in $APP_BUILD_FILE"
-          exit 1
-          fi
+        # ───── Add classpath to android/build.gradle.kts ─────
+        if ! grep -q "com.google.gms:google-services" "$PROJECT_BUILD_FILE"; then
+        echo "🔧 Injecting Firebase classpath into $PROJECT_BUILD_FILE..."
+        awk '
+        /buildscript\s*{/ { print; in_block=1; next }
+        in_block && /dependencies\s*{/ {
+        print; print "        classpath(\"com.google.gms:google-services:4.3.15\")"; in_block=0; next
+        }
+        { print }
+        ' "$PROJECT_BUILD_FILE" > tmp && mv tmp "$PROJECT_BUILD_FILE"
+        echo "✅ Classpath injected."
+        else
+        echo "✅ Firebase classpath already exists."
+        fi
         
-          # ───── Add desugar dependency ─────
-          if ! grep -q 'desugar_jdk_libs' "$APP_BUILD_FILE"; then
-          echo "🔧 Adding desugar_jdk_libs dependency..."
-          sed -i '' '/dependencies\s*{/a\
-          coreLibraryDesugaring('"$DESUGAR_DEP"')
-          ' "$APP_BUILD_FILE"
-          else
-          echo "✅ Desugar dependency already added."
-          fi
+        # ───── Apply plugin in android/app/build.gradle.kts ─────
+        if grep -q "plugins\s*{" "$APP_BUILD_FILE"; then
+        if ! grep -q 'id("com.google.gms.google-services")' "$APP_BUILD_FILE"; then
+        echo "🔧 Applying Google Services plugin..."
+        sed -i '' '/plugins\s*{/a\
+        id("com.google.gms.google-services")
+        ' "$APP_BUILD_FILE"
+        echo "✅ Plugin applied."
+        else
+        echo "✅ Google Services plugin already applied."
+        fi
+        else
+        echo "❌ plugins block not found in $APP_BUILD_FILE"
+        exit 1
+        fi
         
-          # ───── Enable desugaring in compileOptions ─────
-          if ! grep -q 'isCoreLibraryDesugaringEnabled = true' "$APP_BUILD_FILE"; then
-          echo "🔧 Enabling desugaring in compileOptions..."
-          sed -i '' '/compileOptions\s*{/a\
-          isCoreLibraryDesugaringEnabled = true
-          ' "$APP_BUILD_FILE"
-          else
-          echo "✅ Desugaring already enabled in compileOptions."
-          fi
-          
-          else
-          echo "🚫 Firebase config skipped (PUSH_NOTIFY is not true)"
-          fi
+        # ───── Add desugar dependency ─────
+        if ! grep -q 'desugar_jdk_libs' "$APP_BUILD_FILE"; then
+        echo "🔧 Adding desugar_jdk_libs dependency..."
+        sed -i '' '/dependencies\s*{/a\
+        coreLibraryDesugaring('"$DESUGAR_DEP"')
+        ' "$APP_BUILD_FILE"
+        else
+        echo "✅ Desugar dependency already added."
+        fi
+        
+        # ───── Enable desugaring in compileOptions ─────
+        if ! grep -q 'isCoreLibraryDesugaringEnabled = true' "$APP_BUILD_FILE"; then
+        echo "🔧 Enabling desugaring in compileOptions..."
+        sed -i '' '/compileOptions\s*{/a\
+        isCoreLibraryDesugaringEnabled = true
+        ' "$APP_BUILD_FILE"
+        else
+        echo "✅ Desugaring already enabled in compileOptions."
+        fi
+        
+        else
+        echo "🚫 Firebase config skipped (PUSH_NOTIFY is not true)"
+        fi
+    
+    
 
-
-
-#        set -e
-#
-#          if [ "$PUSH_NOTIFY" = "true" ]; then
-#          echo "✅ Google Services Plugin: Start injecting..."
-#
-#          FIREBASE_CLASSPATH='classpath "com.google.gms:google-services:4.3.15"'
-#          CLD_CLASSPATH = 'coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4' // Or latest'
-#          if ! grep -q 'com.google.gms:google-services' android/build.gradle; then
-#          echo "✅ Firebase classpath not found, injecting..."
-#
-#          if ! grep -q 'buildscript {' android/build.gradle; then
-#          echo "🔧 No buildscript block found, injecting entire block..."
-#
-#          printf 'buildscript {\n  repositories {\n    google()\n    mavenCentral()\n  }\n  dependencies {\n    %s\n  }\n}\n\n' "$FIREBASE_CLASSPATH" | cat - android/build.gradle > temp && mv temp android/build.gradle
-#
-#          echo "✅ Full buildscript block injected"
-#          else
-#          echo "🔧 buildscript block found, inserting classpath..."
-#
-#          # In-place edit to insert classpath line inside dependencies block
-#          sed -i '' "/buildscript {/,/dependencies {/ s/dependencies {/dependencies {\n    $FIREBASE_CLASSPATH \n$CLD_CLASSPATH/" android/build.gradle
-#
-#          echo "✅ Firebase classpath inserted"
-#          fi
-#          else
-#          echo "✅ Firebase classpath already present, skipping injection"
-#          fi
-#
-#          echo "🔧 Checking for Google Services plugin in android/app/build.gradle..."
-#
-#          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
-#          echo "🔧 Adding Google Services plugin to android/app/build.gradle"
-#          echo -e "\napply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
-#          echo "✅ Google Services plugin added"
-#          else
-#          echo "✅ Google Services plugin already present"
-#          fi
-#          else
-#          echo "🚫 Firebase config skipped (PUSH_NOTIFY is not true)"
-#          fi
+    #        set -e
+    #
+    #          if [ "$PUSH_NOTIFY" = "true" ]; then
+    #          echo "✅ Google Services Plugin: Start injecting..."
+    #
+    #          FIREBASE_CLASSPATH='classpath "com.google.gms:google-services:4.3.15"'
+    #          CLD_CLASSPATH = 'coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4' // Or latest'
+    #          if ! grep -q 'com.google.gms:google-services' android/build.gradle; then
+    #          echo "✅ Firebase classpath not found, injecting..."
+    #
+    #          if ! grep -q 'buildscript {' android/build.gradle; then
+    #          echo "🔧 No buildscript block found, injecting entire block..."
+    #
+    #          printf 'buildscript {\n  repositories {\n    google()\n    mavenCentral()\n  }\n  dependencies {\n    %s\n  }\n}\n\n' "$FIREBASE_CLASSPATH" | cat - android/build.gradle > temp && mv temp android/build.gradle
+    #
+    #          echo "✅ Full buildscript block injected"
+    #          else
+    #          echo "🔧 buildscript block found, inserting classpath..."
+    #
+    #          # In-place edit to insert classpath line inside dependencies block
+    #          sed -i '' "/buildscript {/,/dependencies {/ s/dependencies {/dependencies {\n    $FIREBASE_CLASSPATH \n$CLD_CLASSPATH/" android/build.gradle
+    #
+    #          echo "✅ Firebase classpath inserted"
+    #          fi
+    #          else
+    #          echo "✅ Firebase classpath already present, skipping injection"
+    #          fi
+    #
+    #          echo "🔧 Checking for Google Services plugin in android/app/build.gradle..."
+    #
+    #          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
+    #          echo "🔧 Adding Google Services plugin to android/app/build.gradle"
+    #          echo -e "\napply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+    #          echo "✅ Google Services plugin added"
+    #          else
+    #          echo "✅ Google Services plugin already present"
+    #          fi
+    #          else
+    #          echo "🚫 Firebase config skipped (PUSH_NOTIFY is not true)"
+    #          fi
 
 
 
@@ -687,11 +687,11 @@ definitions:
 
         if [ "$PUSH_NOTIFY" = "true" ]; then
         echo "📥 Downloading google-services.json..."
-      
+        
         # Ensure target directories exist
         mkdir -p android/app
         
-      
+        
         # Function to download with retry and SSL check
         download_with_retry() {
         local url=$firebase_config_android
@@ -732,7 +732,7 @@ definitions:
         echo "🚨 Failed to download $url after $max_retries attempts."
         return 1
         }
-      
+        
         # Download files with retry
         download_with_retry "$firebase_config_android" "android/app/google-services.json"
 
@@ -745,9 +745,9 @@ definitions:
         else
         echo "🚫 Firebase config skipped (PUSH_NOTIFY is not true)"
         fi
+    
 
-
-#        if [ "$PUSH_NOTIFY" = "true" ]; then
+    #        if [ "$PUSH_NOTIFY" = "true" ]; then
     #        echo "📥 Downloading google-services.json..."
     #
     #        # Ensure target directories exist
@@ -834,7 +834,7 @@ definitions:
         else
           echo "🚫 SDK version update skipped (PUSH_NOTIFY is not true)"
         fi
-    
+
 
     - &update_package_names
       name: Update Android & iOS Package Name / Bundle ID
@@ -880,7 +880,7 @@ definitions:
           echo "❌ iOS project file not found at $IOS_PROJECT_FILE"
           exit 1
         fi
-    
+
 
     - &build_ipa
       name: Building iOS App with Feature Flags
@@ -1052,8 +1052,8 @@ definitions:
     - &build_apk_release
       name: Building Apk with Feature Flags
       script: |
-       
-
+        
+        
         echo "✅ Building APK..."
         flutter build apk --release \
             --dart-define=WEB_URL="$WEB_URL" \
@@ -1175,92 +1175,92 @@ definitions:
     - &key_store
       name: Setup Android keystore and insert Gradle signing block (KTS)
       script: |
-          echo "📦 Setting up Android signing configuration..."
-          
-          # Validate keystore environment variables
-          if [ -z "$KEY_STORE" ] || [ -z "$CM_KEYSTORE_PASSWORD" ] || [ -z "$CM_KEY_ALIAS" ] || [ -z "$CM_KEY_PASSWORD" ]; then
-            echo "❌ Missing required keystore environment variables"
-            echo "Required variables:"
-            echo "- KEY_STORE: URL to download keystore"
-            echo "- CM_KEYSTORE_PASSWORD: Keystore password"
-            echo "- CM_KEY_ALIAS: Key alias"
-            echo "- CM_KEY_PASSWORD: Key password"
-            exit 1
-          fi
-
-          # Create android directory if it doesn't exist
-          mkdir -p android/app
-
-          echo "📥 Downloading keystore..."
-          # Download with retry logic
-          max_attempts=3
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            if curl -f -o android/app/keystore.jks "$KEY_STORE"; then
-              echo "✅ Keystore downloaded successfully"
-              break
-            else
-              echo "❌ Attempt $attempt failed to download keystore"
-              if [ $attempt -eq $max_attempts ]; then
-                echo "❌ Failed to download keystore after $max_attempts attempts"
-                exit 1
-              fi
-              attempt=$((attempt + 1))
-              sleep 5
-            fi
-          done
-
-          echo "📝 Writing key.properties..."
-          cat > android/key.properties <<EOF
-          storeFile=keystore.jks
-          storePassword=$CM_KEYSTORE_PASSWORD
-          keyAlias=$CM_KEY_ALIAS
-          keyPassword=$CM_KEY_PASSWORD
-          EOF
+        echo "📦 Setting up Android signing configuration..."
         
-          echo "🔐 Configuring Gradle signing..."
-          
-          GRADLE_FILE="android/app/build.gradle.kts"
-          
-          # Add keystoreProperties block at the top if not present
-          if ! grep -q 'val keystoreProperties' "$GRADLE_FILE"; then
-            echo "🔧 Adding keystoreProperties block..."
-            sed -i '1s;^;val keystoreProperties = Properties().apply {\n    load(File(rootProject.rootDir, "android/key.properties").inputStream())\n}\n\n;' "$GRADLE_FILE"
+        # Validate keystore environment variables
+        if [ -z "$KEY_STORE" ] || [ -z "$CM_KEYSTORE_PASSWORD" ] || [ -z "$CM_KEY_ALIAS" ] || [ -z "$CM_KEY_PASSWORD" ]; then
+          echo "❌ Missing required keystore environment variables"
+          echo "Required variables:"
+          echo "- KEY_STORE: URL to download keystore"
+          echo "- CM_KEYSTORE_PASSWORD: Keystore password"
+          echo "- CM_KEY_ALIAS: Key alias"
+          echo "- CM_KEY_PASSWORD: Key password"
+          exit 1
+        fi
+        
+        # Create android directory if it doesn't exist
+        mkdir -p android/app
+        
+        echo "📥 Downloading keystore..."
+        # Download with retry logic
+        max_attempts=3
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if curl -f -o android/app/keystore.jks "$KEY_STORE"; then
+            echo "✅ Keystore downloaded successfully"
+            break
           else
-            echo "✅ keystoreProperties block already present"
-          fi
-          
-          # Inject signingConfigs inside android { ... }
-          if ! grep -q 'signingConfigs' "$GRADLE_FILE"; then
-            echo "🔧 Injecting signingConfigs block..."
-            awk '/android\s*{/{print; print "    signingConfigs {\n        create(\"release\") {\n            storeFile = file(\"keystore.jks\")\n            storePassword = keystoreProperties[\"storePassword\"] as String\n            keyAlias = keystoreProperties[\"keyAlias\"] as String\n            keyPassword = keystoreProperties[\"keyPassword\"] as String\n            enableV1Signing = true\n            enableV2Signing = true\n            enableV3Signing = true\n        }\n    }"; next}1' "$GRADLE_FILE" > tmp && mv tmp "$GRADLE_FILE"
-          else
-            echo "✅ signingConfigs already exists"
-          fi
-          
-          # Inject release buildType with proper configuration
-          if grep -q "buildTypes" "$GRADLE_FILE"; then
-            if ! grep -q "signingConfig = signingConfigs.getByName(\"release\")" "$GRADLE_FILE"; then
-              echo "🔧 Updating release buildType configuration..."
-              awk '/buildTypes\s*{/{print; print "        getByName(\"release\") {\n            isMinifyEnabled = true\n            isShrinkResources = true\n            signingConfig = signingConfigs.getByName(\"release\")\n            proguardFiles(getDefaultProguardFile(\"proguard-android-optimize.txt\"), \"proguard-rules.pro\")\n        }"; next}1' "$GRADLE_FILE" > tmp && mv tmp "$GRADLE_FILE"
-            else
-              echo "✅ Release signing configuration already present"
+            echo "❌ Attempt $attempt failed to download keystore"
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Failed to download keystore after $max_attempts attempts"
+              exit 1
             fi
-          else
-            echo "❌ buildTypes block not found in $GRADLE_FILE"
-            exit 1
+            attempt=$((attempt + 1))
+            sleep 5
           fi
-          
-          echo "✅ Android signing configuration completed"
-          
-          # Verify the configuration
-          echo "🔍 Verifying signing configuration..."
-          if [ -f "android/app/keystore.jks" ] && [ -f "android/key.properties" ]; then
-            echo "✅ Signing files present and configured"
+        done
+        
+        echo "📝 Writing key.properties..."
+        cat > android/key.properties <<EOF
+        storeFile=keystore.jks
+        storePassword=$CM_KEYSTORE_PASSWORD
+        keyAlias=$CM_KEY_ALIAS
+        keyPassword=$CM_KEY_PASSWORD
+        EOF
+        
+        echo "🔐 Configuring Gradle signing..."
+        
+        GRADLE_FILE="android/app/build.gradle.kts"
+        
+        # Add keystoreProperties block at the top if not present
+        if ! grep -q 'val keystoreProperties' "$GRADLE_FILE"; then
+          echo "🔧 Adding keystoreProperties block..."
+          sed -i '1s;^;val keystoreProperties = Properties().apply {\n    load(File(rootProject.rootDir, "android/key.properties").inputStream())\n}\n\n;' "$GRADLE_FILE"
+        else
+          echo "✅ keystoreProperties block already present"
+        fi
+        
+        # Inject signingConfigs inside android { ... }
+        if ! grep -q 'signingConfigs' "$GRADLE_FILE"; then
+          echo "🔧 Injecting signingConfigs block..."
+          awk '/android\s*{/{print; print "    signingConfigs {\n        create(\"release\") {\n            storeFile = file(\"keystore.jks\")\n            storePassword = keystoreProperties[\"storePassword\"] as String\n            keyAlias = keystoreProperties[\"keyAlias\"] as String\n            keyPassword = keystoreProperties[\"keyPassword\"] as String\n            enableV1Signing = true\n            enableV2Signing = true\n            enableV3Signing = true\n        }\n    }"; next}1' "$GRADLE_FILE" > tmp && mv tmp "$GRADLE_FILE"
+        else
+          echo "✅ signingConfigs already exists"
+        fi
+        
+        # Inject release buildType with proper configuration
+        if grep -q "buildTypes" "$GRADLE_FILE"; then
+          if ! grep -q "signingConfig = signingConfigs.getByName(\"release\")" "$GRADLE_FILE"; then
+            echo "🔧 Updating release buildType configuration..."
+            awk '/buildTypes\s*{/{print; print "        getByName(\"release\") {\n            isMinifyEnabled = true\n            isShrinkResources = true\n            signingConfig = signingConfigs.getByName(\"release\")\n            proguardFiles(getDefaultProguardFile(\"proguard-android-optimize.txt\"), \"proguard-rules.pro\")\n        }"; next}1' "$GRADLE_FILE" > tmp && mv tmp "$GRADLE_FILE"
           else
-            echo "❌ Signing configuration verification failed"
-            exit 1
+            echo "✅ Release signing configuration already present"
           fi
+        else
+          echo "❌ buildTypes block not found in $GRADLE_FILE"
+          exit 1
+        fi
+        
+        echo "✅ Android signing configuration completed"
+        
+        # Verify the configuration
+        echo "🔍 Verifying signing configuration..."
+        if [ -f "android/app/keystore.jks" ] && [ -f "android/key.properties" ]; then
+          echo "✅ Signing files present and configured"
+        else
+          echo "❌ Signing configuration verification failed"
+          exit 1
+        fi
     - &Setup_IOS
       name: Setting Up IOS Build
       script: |
@@ -1484,12 +1484,12 @@ definitions:
           --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
           --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
           --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD"
-          
+        
           # Extract CODE_SIGN_IDENTITY from the .p12 file
           security import signing_cert.p12 -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
           CODE_SIGN_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_NAME" | awk '{print $2}' | head -n 1)
           echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
-          
+        
           echo "🛠️ Setting UTF-8 encoding for CocoaPods..."
           export LANG=en_US.UTF-8
           export LC_ALL=en_US.UTF-8
@@ -1501,7 +1501,7 @@ definitions:
           pod install --repo-update
           cd ..
           flutter pub get
-          
+        
            # Archive the app
             echo "📦 Archiving app with CodeSigning the IPA File..."
             xcodebuild -workspace ios/Runner.xcworkspace \
@@ -1621,7 +1621,7 @@ definitions:
         else
         echo "✅ Found valid iPhone Distribution certificate: $VALID_IDENTITY"
         fi
-          
+        
           echo "📝 Creating ExportOptions.plist..."
           cat > ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -1642,7 +1642,7 @@ definitions:
           </dict>
           </plist>
           EOF
-          
+        
           echo "✅ ExportOptions.plist created."
 
     - &Inject_iOS_Firebase_Push
@@ -1656,13 +1656,13 @@ definitions:
           if [[ "$firebase_config_ios" =~ ^https:// ]]; then
         
           echo "⬇️ Downloading GoogleService-Info.plist with retry..."
-  
+        
           for i in {1..5}; do
           wget -O ios/Runner/GoogleService-Info.plist "$firebase_config_ios" && break
           echo "❌ Download failed, retrying in $((2 ** i))s..."
           sleep $((2 ** i))
           done
-          
+        
           if [ ! -f ios/Runner/GoogleService-Info.plist ]; then
           echo "❌ Failed to download GoogleService-Info.plist after retries"
           exit 1
@@ -1816,56 +1816,23 @@ workflows:
 
   android-workflow:
     name: Android Workflow
-    max_build_duration: 120
+    max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
-#      android_signing:
-#        - keystore_reference
-      vars:
-        VERSION_NAME: ${VERSION_NAME}
-        VERSION_CODE: ${VERSION_CODE}
-        APP_NAME: ${APP_NAME}
-        ORG_NAME: ${ORG_NAME}
-        WEB_URL: ${WEB_URL}
-        PKG_NAME: ${PKG_NAME}
-        BUNDLE_ID: ${BUNDLE_ID}
-        EMAIL_ID: ${EMAIL_ID}
-        PUSH_NOTIFY: ${PUSH_NOTIFY}
-        IS_CHATBOT: ${IS_CHATBOT}
-        IS_DEEPLINK: ${IS_DEEPLINK}
-        IS_SPLASH: ${IS_SPLASH}
-        IS_PULLDOWN: ${IS_PULLDOWN}
-        IS_BOTTOMMENU: ${IS_BOTTOMMENU}
-        IS_LOAD_IND: ${IS_LOAD_IND}
-        IS_CAMERA: ${IS_CAMERA}
-        IS_LOCATION: ${IS_LOCATION}
-        IS_MIC: ${IS_MIC}
-        IS_NOTIFICATION: ${IS_NOTIFICATION}
-        IS_CONTACT: ${IS_CONTACT}
-        IS_BIOMETRIC: ${IS_BIOMETRIC}
-        IS_CALENDAR: ${IS_CALENDAR}
-        IS_STORAGE: ${IS_STORAGE}
-        LOGO_URL: ${LOGO_URL}
-        SPLASH: ${SPLASH}
-        SPLASH_BG: ${SPLASH_BG}
-        SPLASH_BG_COLOR: ${SPLASH_BG_COLOR}
-        SPLASH_TAGLINE: ${SPLASH_TAGLINE}
-        SPLASH_TAGLINE_COLOR: ${SPLASH_TAGLINE_COLOR}
-        SPLASH_ANIMATION: ${SPLASH_ANIMATION}
-        SPLASH_DURATION: ${SPLASH_DURATION}
-        BOTTOMMENU_ITEMS: ${BOTTOMMENU_ITEMS}
-        BOTTOMMENU_BG_COLOR: ${BOTTOMMENU_BG_COLOR}
-        BOTTOMMENU_ICON_COLOR: ${BOTTOMMENU_ICON_COLOR}
-        BOTTOMMENU_TEXT_COLOR: ${BOTTOMMENU_TEXT_COLOR}
-        BOTTOMMENU_ACTIVE_TAB_COLOR: ${BOTTOMMENU_ACTIVE_TAB_COLOR}
-        BOTTOMMENU_ICON_POSITION: ${BOTTOMMENU_ICON_POSITION}
-        BOTTOMMENU_VISIBLE_ON: ${BOTTOMMENU_VISIBLE_ON}
       flutter: stable
-      xcode: latest
-      cocoapods: default
-      java: 11
-
+      java: 17
     scripts:
+      - name: Uninstall existing app
+        script: |
+          echo "🗑️ Uninstalling existing app if present..."
+          adb devices | grep -v "List" | while read -r line; do
+            if [ ! -z "$line" ]; then
+              device_id=$(echo $line | cut -f1)
+              echo "📱 Uninstalling from device: $device_id"
+              adb -s $device_id uninstall "$PKG_NAME" || true
+            fi
+          done
+          echo "✅ Uninstall step completed"
       - *debug_env
       - *change_proj_name
       - *update_package_names
@@ -1879,26 +1846,18 @@ workflows:
       - *get_splash
       - *set_launcher_icons
       - *build_apk_release
-
     artifacts:
       - build/**/outputs/apk/**/*.apk
-      - build/**/outputs/**/*.aab
-      - build/**/outputs/**/mapping.txt
+      - build/**/outputs/bundle/**/*.aab
+      #      - build/**/outputs/mapping/release/mapping.txt
       - flutter_drive.log
-      - flutter_build_apk.log
-      - flutter_build_aab.log
-
     publishing:
       email:
         recipients:
-          - ${EMAIL_ID}
+          - $EMAIL_ID
         notify:
           success: true
           failure: true
-#      google_play:
-#        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-#        track: internal
-#        submit_as_draft: true
 
   ios-workflow:
     name: iOS Workflow
@@ -1929,7 +1888,7 @@ workflows:
           flutter build ios-framework --no-profile --no-release
           
           echo "✅ Flutter setup completed"
-      
+
       - *change_proj_name
       - *debug_env
       - *update_package_names
@@ -2020,7 +1979,7 @@ workflows:
             echo "export KEYCHAIN_NAME=\"$KEYCHAIN_NAME\""
             echo "export KEYCHAIN_PASSWORD=\"$KEYCHAIN_PASSWORD\""
           } > "$MY_ENV_FILE"
-            
+          
           echo "✅ Code signing setup completed successfully"
 
       - name: Flutter build preparation
@@ -2091,11 +2050,11 @@ workflows:
             post_install do |installer|
               installer.pods_project.targets.each do |target|
                 flutter_additional_ios_build_settings(target)
-                
+          
                 target.build_configurations.each do |config|
                   config.build_settings['ENABLE_BITCODE'] = 'NO'
                   config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-                  
+          
                   # Add arm64 to excluded architectures for simulators
                   if config.build_settings['SDKROOT'] == 'iphoneos'
                     config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
@@ -2134,7 +2093,7 @@ workflows:
         script: |
           set -euo pipefail
           trap 'echo "❌ Error on line $LINENO"' ERR
-          
+
           # Load environment variables
           source "$CM_BUILD_DIR/code_signing_env.sh"
 
@@ -2173,28 +2132,58 @@ workflows:
           # Update Pods project build settings
           echo "🔧 Updating Pods project build settings..."
           cd ios
-          
+
           # Create a script to update Pods project settings
           cat > update_pods_settings.rb <<'EOF'
           require 'xcodeproj'
 
+          def update_build_settings(config)
+            config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+            config.build_settings['CODE_SIGN_IDENTITY'] = ''
+            config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+            config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+            config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER')
+            config.build_settings.delete('DEVELOPMENT_TEAM')
+          end
+
+          # Update Pods project
           project_path = 'Pods/Pods.xcodeproj'
           project = Xcodeproj::Project.open(project_path)
 
           project.targets.each do |target|
+            next if target.name == 'Runner'
+            
             target.build_configurations.each do |config|
-              config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
-              config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
-              config.build_settings['CODE_SIGN_IDENTITY'] = ''
-              config.build_settings['DEVELOPMENT_TEAM'] = ''
+              update_build_settings(config)
             end
           end
 
           project.save
+
+          # Update Runner project
+          runner_project_path = 'Runner.xcodeproj'
+          runner_project = Xcodeproj::Project.open(runner_project_path)
+
+          runner_project.targets.each do |target|
+            if target.name == 'Runner'
+              target.build_configurations.each do |config|
+                config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+                config.build_settings['DEVELOPMENT_TEAM'] = ENV['APPLE_TEAM_ID']
+                config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']
+                config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+              end
+            end
+          end
+
+          runner_project.save
           EOF
 
-          # Run the Ruby script to update Pods project
+          # Run the Ruby script to update projects
           ruby update_pods_settings.rb
+          
+          # Clean and reinstall pods
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
           cd ..
 
           echo "🏗️ Building Flutter iOS app..."
@@ -2253,18 +2242,6 @@ workflows:
               echo "❌ Archive failed"
               exit 1
             }
-
-          # Sign frameworks before export
-          echo "🔐 Signing frameworks..."
-          ARCHIVE_PATH="build/ios/archive/Runner.xcarchive"
-          FRAMEWORKS_PATH="$ARCHIVE_PATH/Products/Applications/Runner.app/Frameworks"
-          
-          find "$FRAMEWORKS_PATH" -name "*.framework" -type d | while read -r framework; do
-            echo "🔑 Signing framework: $(basename "$framework")"
-            codesign --force --sign "$CODE_SIGN_IDENTITY" --keychain "$KEYCHAIN_NAME" \
-              --preserve-metadata=identifier,entitlements,flags \
-              "$framework"
-          done
 
           echo "📦 Exporting IPA..."
           xcodebuild -exportArchive \
