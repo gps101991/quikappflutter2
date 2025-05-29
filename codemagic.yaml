@@ -409,6 +409,9 @@ definitions:
           mkdir -p firebase/ios
           if [ -n "$firebase_config_ios" ]; then
             wget -O firebase/ios/GoogleService-Info.plist "$firebase_config_ios"
+          else
+            echo "❌ firebase_config_ios is empty. Cannot proceed with Firebase setup."
+            exit 1
           fi
 
           if [ -f "firebase/ios/GoogleService-Info.plist" ]; then
@@ -419,7 +422,7 @@ definitions:
             exit 1
           fi
 
-          # 2. Add Firebase SDK (via committed Package.resolved)
+          # 2. Add Firebase SDK via Package.resolved (optional)
           if [ -f "firebase/ios/Package.resolved" ]; then
             mkdir -p ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
             cp firebase/ios/Package.resolved ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
@@ -428,24 +431,38 @@ definitions:
             echo "⚠️ Package.resolved not found. Firebase SDK must be added manually in Xcode."
           fi
 
-          # 3. Download APNs Auth Key if provided (Optional)
+          # 3. Download APNs Auth Key (Optional)
           if [ -n "$APNS_AUTH_KEY_URL" ]; then
             wget -O firebase/ios/AuthKey.p8 "$APNS_AUTH_KEY_URL"
             echo "📥 Downloaded AuthKey.p8 for APNs"
           fi
 
-          # 4. Check APNs entitlements
+          # 4. Create APNs entitlement
+          cat > ios/Runner/Runner.entitlements <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          <key>aps-environment</key>
+          <string>production</string>
+          </dict>
+          </plist>
+          EOF
+          echo "✅ Created ios/Runner/Runner.entitlements"
+          
+          # 5. Check APNs entitlements
           if grep -q "aps-environment" ios/Runner/Runner.entitlements; then
-            echo "✅ APNs entitlements already enabled."
+          echo "✅ APNs entitlements enabled."
           else
-            echo "⚠️ Warning: Missing APNs entitlement in Runner.entitlements."
+          echo "⚠️ Warning: APNs entitlement missing from Runner.entitlements."
           fi
-        else
+          else
           echo "🚫 PUSH_NOTIFY is false. Skipping Firebase push notification setup for iOS."
           rm -f ios/Runner/GoogleService-Info.plist
           rm -f ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           echo "🧹 Cleaned up Firebase iOS config."
-        fi
+          fi
+
     - &Inject_Firebase_new
       name: Inject Firebase and buildscript block
       script: |
@@ -2177,7 +2194,8 @@ workflows:
             runner_project.save
             
             EOF
-
+          cd..
+          
           echo "🏗️ Building Flutter iOS app..."
           flutter build ios --release --no-codesign || {
             echo "❌ Flutter build failed"
