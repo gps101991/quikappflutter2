@@ -402,51 +402,52 @@ definitions:
     - &Inject_Firebase_iOS_Push
       name: Firebase Push Notification Setup for iOS
       script: |
-        if [ "$PUSH_NOTIFY" = "true" ]; then
+          if [ "$PUSH_NOTIFY" = "true" ]; then
           echo "🔔 Enabling Firebase Push Notifications for iOS..."
-
+        
           # 1. Download and apply Firebase config
           mkdir -p firebase/ios
           if [ -n "$firebase_config_ios" ]; then
-            wget -O firebase/ios/GoogleService-Info.plist "$firebase_config_ios"
+          wget -O firebase/ios/GoogleService-Info.plist "$firebase_config_ios"
           else
-            echo "❌ firebase_config_ios is empty. Cannot proceed with Firebase setup."
-            exit 1
+          echo "❌ firebase_config_ios is empty. Cannot proceed with Firebase setup."
+          exit 1
           fi
-
+        
           if [ -f "firebase/ios/GoogleService-Info.plist" ]; then
-            cp firebase/ios/GoogleService-Info.plist ios/Runner/GoogleService-Info.plist
-            echo "✅ GoogleService-Info.plist copied."
+          cp firebase/ios/GoogleService-Info.plist ios/Runner/GoogleService-Info.plist
+          echo "✅ GoogleService-Info.plist copied."
           else
-            echo "❌ Missing GoogleService-Info.plist. Cannot proceed with Firebase setup."
-            exit 1
+          echo "❌ Missing GoogleService-Info.plist. Cannot proceed with Firebase setup."
+          exit 1
           fi
-
+        
           # 2. Add Firebase SDK via Package.resolved (optional)
           if [ -f "firebase/ios/Package.resolved" ]; then
-            mkdir -p ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
-            cp firebase/ios/Package.resolved ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
-            echo "📦 Firebase SDK resolved from committed Package.resolved."
+          mkdir -p ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+          cp firebase/ios/Package.resolved ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          echo "📦 Firebase SDK resolved from committed Package.resolved."
           else
-            echo "⚠️ Package.resolved not found. Firebase SDK must be added manually in Xcode."
+          echo "⚠️ Package.resolved not found. Firebase SDK must be added manually in Xcode."
           fi
-
+        
           # 3. Download APNs Auth Key (Optional)
           if [ -n "$APNS_AUTH_KEY_URL" ]; then
-            wget -O firebase/ios/AuthKey.p8 "$APNS_AUTH_KEY_URL"
-            echo "📥 Downloaded AuthKey.p8 for APNs"
+          wget -O firebase/ios/AuthKey.p8 "$APNS_AUTH_KEY_URL"
+          echo "📥 Downloaded AuthKey.p8 for APNs"
           fi
-
+          
+  
           # 4. Create APNs entitlement
-          cat > ios/Runner/Runner.entitlements <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
+            cat > ios/Runner/Runner.entitlements <<EOF
+         <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
           <key>aps-environment</key>
           <string>production</string>
-          </dict>
-          </plist>
+        </dict>
+        </plist>
           EOF
           echo "✅ Created ios/Runner/Runner.entitlements"
           
