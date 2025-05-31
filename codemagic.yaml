@@ -32,7 +32,7 @@ definitions:
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        CERT_URL: $CERT_URL
+#        CERT_URL: $CERT_URL
         CERT_PASSWORD: $CERT_PASSWORD
         PROFILE_URL: $PROFILE_URL
         PKG_NAME: $PKG_NAME
@@ -2589,51 +2589,51 @@ workflows:
                 # This needs to be adjusted based on your distribution method (app-store, ad-hoc, enterprise, development)
                 # Based on your profile verification saying Ad Hoc, let's create an Ad Hoc plist.
                 cat > "$cm_build_dir/ExportOptions.plist" <<EOF
-              <?xml version="1.0" encoding="UTF-8"?>
-              <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-              <plist version="1.0">
-              <dict>
-                <key>method</key>
-                <string>ad-hoc</string> # Change to app-store, enterprise, or development as needed
-                <key>provisioningProfiles</key>
-                <dict>
-                # If using manual provisioning, map bundle ID to profile name
-                  <key>$(BUNDLE_ID)</key>
-                  <string>$(PROFILE_NAME)</string>
-                # Or, rely on automatic signing which doesn't need this map
-                </dict>
-                <key>signingCertificate</key>
-                <string>Apple Distribution</string> # Or the exact name of your signing cert if needed
-                <key>signingStyle</key>
-                <string>manual</string> # Matches the manual style set in Ruby script
-                <key>stripSwiftSymbols</key>
-                <true/>
-                <key>teamID</key>
-                <string>$(APPLE_TEAM_ID)</string>
-                <key>uploadBitcode</key>
-                <false/>
-                <key>uploadSymbols</key>
-                <true/>
-              </dict>
-              </plist>
-              EOF
-              # Validate ExportOptions.plist
-              if ! plutil -lint "$cm_build_dir/ExportOptions.plist" > /dev/null; then
-              echo "❌ ExportOptions.plist has a syntax error: $cm_build_dir/ExportOptions.plist"
-              exit 1
-              fi
-              echo "✅ ExportOptions.plist created and checked."
-              
-              
-              xcodebuild -exportArchive \
-              -archivePath "$cm_build_dir/Runner.xcarchive" \
-              -exportOptionsPlist "$cm_build_dir/ExportOptions.plist" \
-              -exportPath "$cm_build_dir/export" \
-              -allowProvisioningUpdates || {
-              echo "❌ Xcode export failed"
-              exit 1
-              }
-              echo "✅ IPA exported to $cm_build_dir/export."
+                  <?xml version="1.0" encoding="UTF-8"?>
+                  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+                  <plist version="1.0">
+                  <dict>
+                    <key>method</key>
+                    <string>ad-hoc</string> # Change to app-store, enterprise, or development as needed
+                    <key>provisioningProfiles</key>
+                    <dict>
+                    # If using manual provisioning, map bundle ID to profile name
+                      <key>$(BUNDLE_ID)</key>
+                      <string>$(PROFILE_NAME)</string>
+                    # Or, rely on automatic signing which doesn't need this map
+                    </dict>
+                    <key>signingCertificate</key>
+                    <string>Apple Distribution</string> # Or the exact name of your signing cert if needed
+                    <key>signingStyle</key>
+                    <string>manual</string> # Matches the manual style set in Ruby script
+                    <key>stripSwiftSymbols</key>
+                    <true/>
+                    <key>teamID</key>
+                    <string>$(APPLE_TEAM_ID)</string>
+                    <key>uploadBitcode</key>
+                    <false/>
+                    <key>uploadSymbols</key>
+                    <true/>
+                  </dict>
+                  </plist>
+                  EOF
+                # Validate ExportOptions.plist
+                if ! plutil -lint "$cm_build_dir/ExportOptions.plist" > /dev/null; then
+                echo "❌ ExportOptions.plist has a syntax error: $cm_build_dir/ExportOptions.plist"
+                exit 1
+                fi
+                echo "✅ ExportOptions.plist created and checked."
+                
+                
+                xcodebuild -exportArchive \
+                -archivePath "$cm_build_dir/Runner.xcarchive" \
+                -exportOptionsPlist "$cm_build_dir/ExportOptions.plist" \
+                -exportPath "$cm_build_dir/export" \
+                -allowProvisioningUpdates || {
+                echo "❌ Xcode export failed"
+                exit 1
+                }
+                echo "✅ IPA exported to $cm_build_dir/export."
     
         - name: Final Cleanup
           script: |
