@@ -2271,13 +2271,13 @@ workflows:
                   # If version line doesn't exist, add it below the name line
                   # Use a different delimiter for sed
                   sed -i.bak "/^name: /a\\
-            version: $version_name+$version_code" pubspec.yaml
-              echo "Added version line to pubspec.yaml"
-              fi
-              
-              # Clean up sed backup files
-              find . -name "*.bak" -delete
-              echo "✅ App version set successfully"
+                version: $version_name+$version_code" pubspec.yaml
+                echo "Added version line to pubspec.yaml"
+                fi
+                
+                # Clean up sed backup files
+                find . -name "*.bak" -delete
+                echo "✅ App version set successfully"
 
 
         - name: Handle Assets (Logo, Splash, Icons)
@@ -2375,7 +2375,7 @@ workflows:
                   'Debug' => :debug,
                   'Profile' => :release,
                   'Release' => :release,
-              }
+                }
                 
                 def flutter_root
                 File.foreach(File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)) do |line|
@@ -2439,139 +2439,139 @@ workflows:
 
         - name: Update Xcode Project Settings via Ruby
           script: |
-            set -euo pipefail
-            trap 'echo "❌ Error on line $LINENO"' ERR
-            
-            local apple_team_id="$APPLE_TEAM_ID"
-            local bundle_id="$BUNDLE_ID"
-            # Get PROFILE_NAME and CODE_SIGN_IDENTITY from environment (set by Codemagic's signing)
-            # Need to confirm if CM sets these or if we need to derive them.
-            # If using CM's automatic signing, these variables might be implicitly handled or available differently.
-            # Assuming CM sets relevant variables or xcodebuild picks up from CM's keychain/profile setup.
-            # We can pass TEAM_ID, PROVISIONING_PROFILE, and CODE_SIGN_IDENTITY to xcodebuild directly later.
-            
-            echo "🛠️ Updating Xcode project settings for code signing..."
-            cd ios
-            ruby <<EOF
-            require 'xcodeproj'
-            project = Xcodeproj::Project.open('Runner.xcodeproj')
-            project.targets.each do |target|
-            if target.name == 'Runner'
-            target.build_configurations.each do |config|
-            # Set manual code signing for Runner target (aligns with CM manual setup)
-            config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-            # Use environment variables for dynamic values
-            config.build_settings['DEVELOPMENT_TEAM'] = ENV['APPLE_TEAM_ID']
-            # PROVISIONING_PROFILE_SPECIFIER: Can set this if PROFILE_NAME is available, or rely on xcodebuild parameter
-            # config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']
-            # CODE_SIGN_IDENTITY: Can set this if CODE_SIGN_IDENTITY is available, or rely on xcodebuild parameter
-            # config.build_settings['CODE_SIGN_IDENTITY'] = ENV['CODE_SIGN_IDENTITY']
-            config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
-            config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
-            config.build_settings.delete('EXPANDED_CODE_SIGN_IDENTITY') # Clean up
-            config.build_settings['CODE_SIGN_INJECT_BASE_ENTITLEMENTS'] = 'YES'
-            config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
-            # OTHER_CODE_SIGN_FLAGS: Remove manual keychain flag if using CM's keychain
-            config.build_settings.delete('OTHER_CODE_SIGN_FLAGS')
-            end
-            else
-            # Ensure Pod targets use automatic signing or inherit from the project
-            target.build_configurations.each do |config|
-            config.build_settings.delete('CODE_SIGN_STYLE') # Use project default/CM handling
-            config.build_settings.delete('DEVELOPMENT_TEAM') # Should be handled by CM
-            config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER') # Should be handled by CM
-            config.build_settings.delete('CODE_SIGN_IDENTITY') # Should be handled by CM
-            # No, do not require signing for pods - let Xcode/Cocoapods handle based on parent target
-            # config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
-            # config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
-            config.build_settings.delete('CODE_SIGNING_REQUIRED')
-            config.build_settings.delete('CODE_SIGNING_ALLOWED')
-            config.build_settings.delete('EXPANDED_CODE_SIGN_IDENTITY') # Clean up
-            config.build_settings.delete('CODE_SIGN_ENTITLEMENTS') # Pods don't usually need entitlements
-            config.build_settings.delete('OTHER_CODE_SIGN_FLAGS') # Explicitly remove to prevent interference
-            end
-            end
-            end
-            project.save
-            EOF
-            cd ..
-            echo "✅ Xcode project settings updated."
-  
+                set -euo pipefail
+                trap 'echo "❌ Error on line $LINENO"' ERR
+                
+                local apple_team_id="$APPLE_TEAM_ID"
+                local bundle_id="$BUNDLE_ID"
+                # Get PROFILE_NAME and CODE_SIGN_IDENTITY from environment (set by Codemagic's signing)
+                # Need to confirm if CM sets these or if we need to derive them.
+                # If using CM's automatic signing, these variables might be implicitly handled or available differently.
+                # Assuming CM sets relevant variables or xcodebuild picks up from CM's keychain/profile setup.
+                # We can pass TEAM_ID, PROVISIONING_PROFILE, and CODE_SIGN_IDENTITY to xcodebuild directly later.
+                
+                echo "🛠️ Updating Xcode project settings for code signing..."
+                cd ios
+                ruby <<EOF
+                require 'xcodeproj'
+                project = Xcodeproj::Project.open('Runner.xcodeproj')
+                project.targets.each do |target|
+                if target.name == 'Runner'
+                target.build_configurations.each do |config|
+                # Set manual code signing for Runner target (aligns with CM manual setup)
+                config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+                # Use environment variables for dynamic values
+                config.build_settings['DEVELOPMENT_TEAM'] = ENV['APPLE_TEAM_ID']
+                # PROVISIONING_PROFILE_SPECIFIER: Can set this if PROFILE_NAME is available, or rely on xcodebuild parameter
+                # config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']
+                # CODE_SIGN_IDENTITY: Can set this if CODE_SIGN_IDENTITY is available, or rely on xcodebuild parameter
+                # config.build_settings['CODE_SIGN_IDENTITY'] = ENV['CODE_SIGN_IDENTITY']
+                config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
+                config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
+                config.build_settings.delete('EXPANDED_CODE_SIGN_IDENTITY') # Clean up
+                config.build_settings['CODE_SIGN_INJECT_BASE_ENTITLEMENTS'] = 'YES'
+                config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
+                # OTHER_CODE_SIGN_FLAGS: Remove manual keychain flag if using CM's keychain
+                config.build_settings.delete('OTHER_CODE_SIGN_FLAGS')
+                end
+                else
+                # Ensure Pod targets use automatic signing or inherit from the project
+                target.build_configurations.each do |config|
+                config.build_settings.delete('CODE_SIGN_STYLE') # Use project default/CM handling
+                config.build_settings.delete('DEVELOPMENT_TEAM') # Should be handled by CM
+                config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER') # Should be handled by CM
+                config.build_settings.delete('CODE_SIGN_IDENTITY') # Should be handled by CM
+                # No, do not require signing for pods - let Xcode/Cocoapods handle based on parent target
+                # config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
+                # config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
+                config.build_settings.delete('CODE_SIGNING_REQUIRED')
+                config.build_settings.delete('CODE_SIGNING_ALLOWED')
+                config.build_settings.delete('EXPANDED_CODE_SIGN_IDENTITY') # Clean up
+                config.build_settings.delete('CODE_SIGN_ENTITLEMENTS') # Pods don't usually need entitlements
+                config.build_settings.delete('OTHER_CODE_SIGN_FLAGS') # Explicitly remove to prevent interference
+                end
+                end
+                end
+                project.save
+                EOF
+                cd ..
+                echo "✅ Xcode project settings updated."
+
         - name: Create Entitlements File
           script: |
-            set -euo pipefail
-            trap 'echo "❌ Error on line $LINENO"' ERR
-            
-            local apple_team_id="$APPLE_TEAM_ID"
-            local bundle_id="$BUNDLE_ID"
-            
-            echo "📄 Ensuring entitlements file exists..."
-            mkdir -p ios/Runner
-            ENTITLEMENTS_FILE="ios/Runner/Runner.entitlements"
-            cat > "$ENTITLEMENTS_FILE" <<EOF
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>com.apple.security.app-sandbox</key>
-              <false/> # Typically false for distribution apps that access user files etc.
-              <key>com.apple.security.network.client</key>
-              <true/>
-              <key>com.apple.developer.team-identifier</key>
-              <string>${apple_team_id}</string>
-              <key>keychain-access-groups</key>
-              <array>
-              <string>${apple_team_id}.*</string>
-              </array>
-              <key>get-task-allow</key>
-              <false/> # Should be false for Release builds
-              <key>application-identifier</key>
-              <string>${apple_team_id}.${bundle_id}</string>
-            
-            # Add other entitlements here as needed (e.g., push notifications, associated domains, etc.)
-            # <key>aps-environment</key>
-            # <string>production</string>
-            # <key>com.apple.developer.associated-domains</key>
-            # <array>
-            #   <string>applinks:yourwebsite.com</string>
-            # </array>
-            
-            </dict>
-            </plist>
-            EOF
-            
-            # Validate entitlements file
-            if ! plutil -lint "$ENTITLEMENTS_FILE" > /dev/null; then
-            echo "❌ Entitlements file has a syntax error: $ENTITLEMENTS_FILE"
-            exit 1
-            fi
-            echo "✅ Entitlements file created and checked."
-    
+                set -euo pipefail
+                trap 'echo "❌ Error on line $LINENO"' ERR
+                
+                local apple_team_id="$APPLE_TEAM_ID"
+                local bundle_id="$BUNDLE_ID"
+                
+                echo "📄 Ensuring entitlements file exists..."
+                mkdir -p ios/Runner
+                ENTITLEMENTS_FILE="ios/Runner/Runner.entitlements"
+                cat > "$ENTITLEMENTS_FILE" <<EOF
+                <?xml version="1.0" encoding="UTF-8"?>
+                <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+                <plist version="1.0">
+                <dict>
+                  <key>com.apple.security.app-sandbox</key>
+                  <false/> # Typically false for distribution apps that access user files etc.
+                  <key>com.apple.security.network.client</key>
+                  <true/>
+                  <key>com.apple.developer.team-identifier</key>
+                  <string>${apple_team_id}</string>
+                  <key>keychain-access-groups</key>
+                  <array>
+                  <string>${apple_team_id}.*</string>
+                  </array>
+                  <key>get-task-allow</key>
+                  <false/> # Should be false for Release builds
+                  <key>application-identifier</key>
+                  <string>${apple_team_id}.${bundle_id}</string>
+                
+                # Add other entitlements here as needed (e.g., push notifications, associated domains, etc.)
+                # <key>aps-environment</key>
+                # <string>production</string>
+                # <key>com.apple.developer.associated-domains</key>
+                # <array>
+                #   <string>applinks:yourwebsite.com</string>
+                # </array>
+                
+                </dict>
+                </plist>
+                EOF
+                
+                # Validate entitlements file
+                if ! plutil -lint "$ENTITLEMENTS_FILE" > /dev/null; then
+                echo "❌ Entitlements file has a syntax error: $ENTITLEMENTS_FILE"
+                exit 1
+                fi
+                echo "✅ Entitlements file created and checked."
+
         - name: Archive the app
           script: |
-            set -euo pipefail
-            trap 'echo "❌ Error on line $LINENO"' ERR
-            
-            local cm_build_dir="$CM_BUILD_DIR"
-            
-            echo "🏗️ Archiving the app..."
-            cd ios
-            # Using CM_BUILD_DIR for archive path as defined earlier
-            # Relying on Codemagic's App Signing features to handle CODE_SIGN_IDENTITY, etc.
-            xcodebuild -workspace Runner.xcworkspace \
-              -scheme Runner \
-              -configuration Release \
-              -archivePath "$cm_build_dir/Runner.xcarchive" \
-              -sdk iphoneos \
-              -destination 'generic/platform=iOS' \
-              -allowProvisioningUpdates \
-              archive || {
-                echo "❌ Xcode archive failed"
-                exit 1
-              }
-            cd ..
-            echo "✅ Archive created at $cm_build_dir/Runner.xcarchive."
-    
+              set -euo pipefail
+              trap 'echo "❌ Error on line $LINENO"' ERR
+              
+              local cm_build_dir="$CM_BUILD_DIR"
+              
+              echo "🏗️ Archiving the app..."
+              cd ios
+              # Using CM_BUILD_DIR for archive path as defined earlier
+              # Relying on Codemagic's App Signing features to handle CODE_SIGN_IDENTITY, etc.
+              xcodebuild -workspace Runner.xcworkspace \
+                -scheme Runner \
+                -configuration Release \
+                -archivePath "$cm_build_dir/Runner.xcarchive" \
+                -sdk iphoneos \
+                -destination 'generic/platform=iOS' \
+                -allowProvisioningUpdates \
+                archive || {
+                  echo "❌ Xcode archive failed"
+                  exit 1
+                }
+              cd ..
+              echo "✅ Archive created at $cm_build_dir/Runner.xcarchive."
+
         - name: Export the IPA
           script: |
                 set -euo pipefail
@@ -2589,96 +2589,96 @@ workflows:
                 # This needs to be adjusted based on your distribution method (app-store, ad-hoc, enterprise, development)
                 # Based on your profile verification saying Ad Hoc, let's create an Ad Hoc plist.
                 cat > "$cm_build_dir/ExportOptions.plist" <<EOF
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>method</key>
-              <string>ad-hoc</string> # Change to app-store, enterprise, or development as needed
-              <key>provisioningProfiles</key>
+              <?xml version="1.0" encoding="UTF-8"?>
+              <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+              <plist version="1.0">
               <dict>
-              # If using manual provisioning, map bundle ID to profile name
-                <key>$(BUNDLE_ID)</key>
-                <string>$(PROFILE_NAME)</string>
-              # Or, rely on automatic signing which doesn't need this map
+                <key>method</key>
+                <string>ad-hoc</string> # Change to app-store, enterprise, or development as needed
+                <key>provisioningProfiles</key>
+                <dict>
+                # If using manual provisioning, map bundle ID to profile name
+                  <key>$(BUNDLE_ID)</key>
+                  <string>$(PROFILE_NAME)</string>
+                # Or, rely on automatic signing which doesn't need this map
+                </dict>
+                <key>signingCertificate</key>
+                <string>Apple Distribution</string> # Or the exact name of your signing cert if needed
+                <key>signingStyle</key>
+                <string>manual</string> # Matches the manual style set in Ruby script
+                <key>stripSwiftSymbols</key>
+                <true/>
+                <key>teamID</key>
+                <string>$(APPLE_TEAM_ID)</string>
+                <key>uploadBitcode</key>
+                <false/>
+                <key>uploadSymbols</key>
+                <true/>
               </dict>
-              <key>signingCertificate</key>
-              <string>Apple Distribution</string> # Or the exact name of your signing cert if needed
-              <key>signingStyle</key>
-              <string>manual</string> # Matches the manual style set in Ruby script
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>teamID</key>
-              <string>$(APPLE_TEAM_ID)</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
-            </dict>
-            </plist>
-            EOF
-            # Validate ExportOptions.plist
-            if ! plutil -lint "$cm_build_dir/ExportOptions.plist" > /dev/null; then
-            echo "❌ ExportOptions.plist has a syntax error: $cm_build_dir/ExportOptions.plist"
-            exit 1
-            fi
-            echo "✅ ExportOptions.plist created and checked."
-            
-            
-            xcodebuild -exportArchive \
-            -archivePath "$cm_build_dir/Runner.xcarchive" \
-            -exportOptionsPlist "$cm_build_dir/ExportOptions.plist" \
-            -exportPath "$cm_build_dir/export" \
-            -allowProvisioningUpdates || {
-            echo "❌ Xcode export failed"
-            exit 1
-            }
-            echo "✅ IPA exported to $cm_build_dir/export."
+              </plist>
+              EOF
+              # Validate ExportOptions.plist
+              if ! plutil -lint "$cm_build_dir/ExportOptions.plist" > /dev/null; then
+              echo "❌ ExportOptions.plist has a syntax error: $cm_build_dir/ExportOptions.plist"
+              exit 1
+              fi
+              echo "✅ ExportOptions.plist created and checked."
+              
+              
+              xcodebuild -exportArchive \
+              -archivePath "$cm_build_dir/Runner.xcarchive" \
+              -exportOptionsPlist "$cm_build_dir/ExportOptions.plist" \
+              -exportPath "$cm_build_dir/export" \
+              -allowProvisioningUpdates || {
+              echo "❌ Xcode export failed"
+              exit 1
+              }
+              echo "✅ IPA exported to $cm_build_dir/export."
     
         - name: Final Cleanup
           script: |
-            set -euo pipefail
-            trap 'echo "❌ Error on line $LINENO"' ERR
-            
-            local cm_build_dir="$CM_BUILD_DIR"
-            
-            echo "🧹 Performing final cleanup..."
-            
-            # Remove temporary profile plist
-            if [ -f "$cm_build_dir/profile.plist" ]; then
-                rm "$cm_build_dir/profile.plist"
-                echo "🧹 Removed temporary profile plist file."
-            fi
-            
-            # Remove temporary code signing env file (if it was created)
-            if [ -f "$cm_build_dir/code_signing_env.sh" ]; then
-                rm "$cm_build_dir/code_signing_env.sh"
-                echo "🧹 Removed temporary code signing env file."
-            fi
-            
-            # Remove downloaded certificate and key files (if they exist)
-             if [ -f "$cm_build_dir/certificate.cer" ]; then
-                rm "$cm_build_dir/certificate.cer"
-                echo "🧹 Removed downloaded certificate file."
-             fi
-              if [ -f "$cm_build_dir/private.key" ]; then
-                rm "$cm_build_dir/private.key"
-                echo "🧹 Removed downloaded private key file."
-             fi
-             # Remove generated .p12 file
-              if [ -f "$cm_build_dir/generated_certificate.p12" ]; then
-                rm "$cm_build_dir/generated_certificate.p12"
-                echo "🧹 Removed generated .p12 file."
-             fi
-              # Remove downloaded provisioning profile (if not using CM's upload)
-              if [ -f "$cm_build_dir/profile.mobileprovision" ]; then
-                rm "$cm_build_dir/profile.mobileprovision"
-                echo "🧹 Removed downloaded provisioning profile file."
-             fi
-            
-            # Temporary keychain cleanup is handled by Codemagic
-            
-            echo "✅ Final cleanup complete."
+              set -euo pipefail
+              trap 'echo "❌ Error on line $LINENO"' ERR
+              
+              local cm_build_dir="$CM_BUILD_DIR"
+              
+              echo "🧹 Performing final cleanup..."
+              
+              # Remove temporary profile plist
+              if [ -f "$cm_build_dir/profile.plist" ]; then
+                  rm "$cm_build_dir/profile.plist"
+                  echo "🧹 Removed temporary profile plist file."
+              fi
+              
+              # Remove temporary code signing env file (if it was created)
+              if [ -f "$cm_build_dir/code_signing_env.sh" ]; then
+                  rm "$cm_build_dir/code_signing_env.sh"
+                  echo "🧹 Removed temporary code signing env file."
+              fi
+              
+              # Remove downloaded certificate and key files (if they exist)
+               if [ -f "$cm_build_dir/certificate.cer" ]; then
+                  rm "$cm_build_dir/certificate.cer"
+                  echo "🧹 Removed downloaded certificate file."
+               fi
+                if [ -f "$cm_build_dir/private.key" ]; then
+                  rm "$cm_build_dir/private.key"
+                  echo "🧹 Removed downloaded private key file."
+               fi
+               # Remove generated .p12 file
+                if [ -f "$cm_build_dir/generated_certificate.p12" ]; then
+                  rm "$cm_build_dir/generated_certificate.p12"
+                  echo "🧹 Removed generated .p12 file."
+               fi
+                # Remove downloaded provisioning profile (if not using CM's upload)
+                if [ -f "$cm_build_dir/profile.mobileprovision" ]; then
+                  rm "$cm_build_dir/profile.mobileprovision"
+                  echo "🧹 Removed downloaded provisioning profile file."
+               fi
+              
+              # Temporary keychain cleanup is handled by Codemagic
+              
+              echo "✅ Final cleanup complete."
 
     artifacts:
       - build/ios/iphoneos/Runner.app
