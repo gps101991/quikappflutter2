@@ -1886,9 +1886,9 @@ workflows:
       cocoapods: default
       flutter: stable
 
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: $BUNDLE_ID
+#      ios_signing:
+#        distribution_type: app_store
+#        bundle_identifier: $BUNDLE_ID
 
       vars:
         # Signing Paths (dynamic)
