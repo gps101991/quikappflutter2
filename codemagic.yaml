@@ -2598,8 +2598,8 @@ workflows:
               <key>provisioningProfiles</key>
               <dict>
               # If using manual provisioning, map bundle ID to profile name
-              # <key>$(BUNDLE_ID)</key>
-              # <string>$(PROFILE_NAME)</string>
+                <key>$(BUNDLE_ID)</key>
+                <string>$(PROFILE_NAME)</string>
               # Or, rely on automatic signing which doesn't need this map
               </dict>
               <key>signingCertificate</key>
