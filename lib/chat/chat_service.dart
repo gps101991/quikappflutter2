@@ -50,13 +50,14 @@ class KnowledgeBaseEntry {
     'domain': domain,
   };
 
-  factory KnowledgeBaseEntry.fromJson(Map<String, dynamic> json) => KnowledgeBaseEntry(
-    url: json['url'] as String,
-    title: json['title'] as String,
-    headings: List<String>.from(json['headings'] as List),
-    paragraphs: List<String>.from(json['paragraphs'] as List),
-    domain: json['domain'] as String,
-  );
+  factory KnowledgeBaseEntry.fromJson(Map<String, dynamic> json) =>
+      KnowledgeBaseEntry(
+        url: json['url'] as String,
+        title: json['title'] as String,
+        headings: List<String>.from(json['headings'] as List),
+        paragraphs: List<String>.from(json['paragraphs'] as List),
+        domain: json['domain'] as String,
+      );
 }
 
 class ChatService {
@@ -64,20 +65,20 @@ class ChatService {
   static const String _knowledgeBaseKey = 'knowledge_base';
   static const int _chunkSize = 5;
   static const Duration _rateLimitDelay = Duration(milliseconds: 100);
-  
+
   final Map<String, KnowledgeBaseEntry> _knowledgeBase = {};
   final List<ChatMessage> _chatHistory = [];
   final Set<String> _crawledUrls = {};
-  
+
   late final String _currentUrl;
   late final String _currentDomain;
   KnowledgeBaseEntry? _currentPageEntry;
-  final StreamController<List<ChatMessage>> _chatStreamController = 
+  final StreamController<List<ChatMessage>> _chatStreamController =
       StreamController<List<ChatMessage>>.broadcast();
-  
+
   Stream<List<ChatMessage>> get chatStream => _chatStreamController.stream;
   List<ChatMessage> get chatHistory => List.unmodifiable(_chatHistory);
-  
+
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
 
@@ -89,7 +90,7 @@ class ChatService {
 
   Future<void> _initializeService() async {
     if (_isInitialized) return;
-    
+
     _initCompleter = Completer<void>();
     try {
       await _loadStoredData();
@@ -110,22 +111,26 @@ class ChatService {
   Future<void> _loadStoredData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       final historyJson = prefs.getString(_storageKey);
       if (historyJson != null) {
         final List<dynamic> historyList = jsonDecode(historyJson);
         _chatHistory.addAll(
-          historyList.map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
+          historyList.map(
+            (item) => ChatMessage.fromJson(item as Map<String, dynamic>),
+          ),
         );
         _chatStreamController.add(_chatHistory);
       }
 
       final knowledgeJson = prefs.getString(_knowledgeBaseKey);
       if (knowledgeJson != null) {
-        final Map<String, dynamic> knowledgeMap = 
+        final Map<String, dynamic> knowledgeMap =
             jsonDecode(knowledgeJson) as Map<String, dynamic>;
         knowledgeMap.forEach((key, value) {
-          final entry = KnowledgeBaseEntry.fromJson(value as Map<String, dynamic>);
+          final entry = KnowledgeBaseEntry.fromJson(
+            value as Map<String, dynamic>,
+          );
           if (!entry.isStale) {
             _knowledgeBase[key] = entry;
             _crawledUrls.add(key);
@@ -139,17 +144,19 @@ class ChatService {
 
   Future<void> _saveData() async {
     if (!_isInitialized) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      
-      final historyJson = jsonEncode(_chatHistory.map((msg) => msg.toJson()).toList());
+
+      final historyJson = jsonEncode(
+        _chatHistory.map((msg) => msg.toJson()).toList(),
+      );
       await prefs.setString(_storageKey, historyJson);
 
       final knowledgeJson = jsonEncode(
         Map.fromEntries(
-          _knowledgeBase.entries.map((e) => MapEntry(e.key, e.value.toJson()))
-        )
+          _knowledgeBase.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+        ),
       );
       await prefs.setString(_knowledgeBaseKey, knowledgeJson);
     } catch (e) {
@@ -166,7 +173,7 @@ class ChatService {
     await ensureInitialized();
     _chatHistory.clear();
     _chatStreamController.add(_chatHistory);
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_storageKey);
   }
@@ -196,7 +203,7 @@ class ChatService {
       if (response.statusCode != 200) return;
 
       final content = await compute(_extractContent, response.body);
-      
+
       _currentPageEntry = KnowledgeBaseEntry(
         url: _currentUrl,
         title: content['title'] as String,
@@ -204,7 +211,7 @@ class ChatService {
         paragraphs: List<String>.from(content['paragraphs'] as List),
         domain: _currentDomain,
       );
-      
+
       _knowledgeBase[_currentUrl] = _currentPageEntry!;
       unawaited(_saveData());
 
@@ -237,11 +244,7 @@ class ChatService {
       }
     }
 
-    return {
-      'title': title,
-      'headings': headings,
-      'paragraphs': paragraphs,
-    };
+    return {'title': title, 'headings': headings, 'paragraphs': paragraphs};
   }
 
   Future<void> _parseLinkedPages(dom.Document document) async {
@@ -253,7 +256,7 @@ class ChatService {
         _crawledUrls.add(url);
         return _fetchAndParsePage(url);
       });
-      
+
       await Future.wait(futures);
       await Future.delayed(_rateLimitDelay);
     }
@@ -270,8 +273,8 @@ class ChatService {
       try {
         final nextUrl = baseUri.resolve(href).toString();
         final nextUri = Uri.parse(nextUrl);
-        
-        if (nextUri.host == _currentDomain && 
+
+        if (nextUri.host == _currentDomain &&
             !_crawledUrls.contains(nextUrl) &&
             nextUrl != _currentUrl &&
             _knowledgeBase[nextUrl]?.isStale != false) {
@@ -288,13 +291,13 @@ class ChatService {
   List<List<String>> _createUrlChunks(Set<String> urls) {
     final chunks = <List<String>>[];
     final urlList = urls.toList();
-    
+
     for (var i = 0; i < urlList.length; i += _chunkSize) {
       chunks.add(
         urlList.sublist(
-          i, 
-          i + _chunkSize > urlList.length ? urlList.length : i + _chunkSize
-        )
+          i,
+          i + _chunkSize > urlList.length ? urlList.length : i + _chunkSize,
+        ),
       );
     }
 
@@ -307,7 +310,7 @@ class ChatService {
       if (response.statusCode != 200) return;
 
       final content = await compute(_extractContent, response.body);
-      
+
       _knowledgeBase[url] = KnowledgeBaseEntry(
         url: url,
         title: content['title'] as String,
@@ -315,7 +318,7 @@ class ChatService {
         paragraphs: List<String>.from(content['paragraphs'] as List),
         domain: _currentDomain,
       );
-      
+
       unawaited(_saveData());
     } catch (e) {
       debugPrint('Error fetching page $url: $e');
@@ -323,28 +326,32 @@ class ChatService {
   }
 
   Future<void> processUserMessage(String userMessage) async {
-    await _addMessage(ChatMessage(
-      text: userMessage,
-      isUser: true,
-      timestamp: DateTime.now(),
-    ));
+    await _addMessage(
+      ChatMessage(text: userMessage, isUser: true, timestamp: DateTime.now()),
+    );
 
     final lowerMessage = userMessage.toLowerCase();
     final response = await _generateResponse(lowerMessage, userMessage);
 
-    await _addMessage(ChatMessage(
-      text: response.message,
-      isUser: false,
-      links: response.links,
-      timestamp: DateTime.now(),
-    ));
+    await _addMessage(
+      ChatMessage(
+        text: response.message,
+        isUser: false,
+        links: response.links,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
-  Future<ChatResponse> _generateResponse(String lowerMessage, String originalMessage) async {
+  Future<ChatResponse> _generateResponse(
+    String lowerMessage,
+    String originalMessage,
+  ) async {
     // Greetings
     if (_isGreeting(lowerMessage)) {
       return ChatResponse(
-        message: 'Hello! 👋\nWelcome to $_currentDomain\nI am an Intelligent Assistant. \nHow can I help you today?',
+        message:
+            'Hello! 👋\nWelcome to $_currentDomain\nI am an Intelligent Assistant. \nHow can I help you today?',
       );
     }
 
@@ -413,12 +420,15 @@ class ChatService {
     var aboutContent = '';
     var aboutUrl = '';
     var aboutTitle = '';
-    
+
     // First try to find an about page
     for (final entry in _knowledgeBase.values) {
       final url = entry.url.toLowerCase();
       if (url.contains('about') && !entry.isStale) {
-        aboutContent = _extractRelevantSnippet(entry.paragraphs.take(2).join('. '), 'about');
+        aboutContent = _extractRelevantSnippet(
+          entry.paragraphs.take(2).join('. '),
+          'about',
+        );
         aboutUrl = entry.url;
         aboutTitle = entry.title;
         break;
@@ -427,14 +437,18 @@ class ChatService {
 
     // If no about page found, use current page content
     if (aboutContent.isEmpty && _currentPageEntry != null) {
-      aboutContent = _extractRelevantSnippet(_currentPageEntry!.paragraphs.take(2).join('. '), 'about');
+      aboutContent = _extractRelevantSnippet(
+        _currentPageEntry!.paragraphs.take(2).join('. '),
+        'about',
+      );
       aboutUrl = _currentUrl;
       aboutTitle = _currentPageEntry!.title;
     }
 
     if (aboutContent.isEmpty) {
       return ChatResponse(
-        message: 'I apologize, but I could not find detailed information about $_currentDomain. You may want to check the website navigation for an About page.',
+        message:
+            'I apologize, but I could not find detailed information about $_currentDomain. You may want to check the website navigation for an About page.',
       );
     }
 
@@ -443,7 +457,7 @@ class ChatService {
 
 $aboutContent
 
-[${aboutUrl}](${aboutUrl})''',
+[$aboutUrl]($aboutUrl)''',
       // buttons: [{
       //   'text': 'View More',
       //   'url': aboutUrl,
@@ -494,7 +508,8 @@ $aboutContent
 
     if (contactInfo.isEmpty) {
       return const ChatResponse(
-        message: 'I apologize, but I could not find specific contact information. You may want to check the website\'s contact page directly.',
+        message:
+            'I apologize, but I could not find specific contact information. You may want to check the website\'s contact page directly.',
       );
     }
 
@@ -503,7 +518,7 @@ $aboutContent
 
 $contactInfo
 
-[${contactUrl}](${contactUrl})''',
+[$contactUrl]($contactUrl)''',
       // buttons: [{
       //   'text': 'View More',
       //   'url': contactUrl,
@@ -518,39 +533,43 @@ $contactInfo
   bool _containsContactInfo(String text) {
     final lowerText = text.toLowerCase();
     return lowerText.contains('email') ||
-           lowerText.contains('@') ||
-           lowerText.contains('phone') ||
-           lowerText.contains('tel') ||
-           lowerText.contains('address') ||
-           lowerText.contains('contact');
+        lowerText.contains('@') ||
+        lowerText.contains('phone') ||
+        lowerText.contains('tel') ||
+        lowerText.contains('address') ||
+        lowerText.contains('contact');
   }
 
   Future<ChatResponse> _getSearchResponse(String query) async {
     final relevantContent = await _findRelevantContent(query);
-    
+
     if (relevantContent.isEmpty) {
       return ChatResponse(
-        message: "I couldn't find any information about that on $_currentDomain. Could you try rephrasing your question?",
+        message:
+            "I couldn't find any information about that on $_currentDomain. Could you try rephrasing your question?",
       );
     }
 
     final messageLines = <String>[];
     final searchResults = <SearchResult>[];
     final allTerms = <String>{};
-    final queryWords = query.toLowerCase().split(' ').where((w) => w.length > 2);
-    
+    final queryWords = query
+        .toLowerCase()
+        .split(' ')
+        .where((w) => w.length > 2);
+
     // Generate similar terms and variations
     for (final word in queryWords) {
       allTerms.add(word);
       allTerms.addAll(_generateSimilarWords(word));
     }
-    
+
     // Add related terms section
     if (allTerms.length > 1) {
       messageLines.add('**Related keywords found:** ${allTerms.join(', ')}');
       messageLines.add('');
     }
-    
+
     messageLines.add('Here are the most relevant results:');
     messageLines.add('');
 
@@ -558,18 +577,24 @@ $contactInfo
     for (final entry in relevantContent.entries) {
       final content = entry.value;
       final title = _knowledgeBase[entry.key]?.title ?? 'Untitled';
-      final matchedKeywords = allTerms.where((term) => 
-        content.text.toLowerCase().contains(term.toLowerCase()) ||
-        title.toLowerCase().contains(term.toLowerCase())
-      ).toList();
+      final matchedKeywords =
+          allTerms
+              .where(
+                (term) =>
+                    content.text.toLowerCase().contains(term.toLowerCase()) ||
+                    title.toLowerCase().contains(term.toLowerCase()),
+              )
+              .toList();
 
-      searchResults.add(SearchResult(
-        title: title,
-        content: content.text,
-        url: entry.key,
-        matchedKeywords: matchedKeywords,
-        index: index,
-      ));
+      searchResults.add(
+        SearchResult(
+          title: title,
+          content: content.text,
+          url: entry.key,
+          matchedKeywords: matchedKeywords,
+          index: index,
+        ),
+      );
 
       messageLines.addAll([
         '$index. **$title**',
@@ -593,12 +618,12 @@ $contactInfo
     final results = <String, ContentSection>{};
     final words = query.split(' ').where((w) => w.length > 2).toList();
     final similarWords = <String, Set<String>>{};
-    
+
     // Generate similar words for each search term
     for (final word in words) {
       similarWords[word] = _generateSimilarWords(word);
     }
-    
+
     for (final entry in _knowledgeBase.values) {
       if (entry.domain != _currentDomain || entry.isStale) continue;
 
@@ -611,7 +636,8 @@ $contactInfo
       final lowerTitle = entry.title.toLowerCase();
       if (lowerTitle.contains(query)) {
         maxRelevance = 100;
-        matchedText = entry.paragraphs.isNotEmpty ? entry.paragraphs.first : entry.title;
+        matchedText =
+            entry.paragraphs.isNotEmpty ? entry.paragraphs.first : entry.title;
         bestMatch = ContentSection(
           text: _extractRelevantSnippet(matchedText, query),
           type: 'title',
@@ -625,7 +651,7 @@ $contactInfo
           final lowerParagraph = paragraph.toLowerCase();
           var relevance = 0;
           final localMatchedTerms = <String>[];
-          
+
           // Calculate relevance based on word matches and similar words
           for (final word in words) {
             if (lowerParagraph.contains(word)) {
@@ -658,7 +684,8 @@ $contactInfo
         }
       }
 
-      if (bestMatch != null && maxRelevance >= 15) { // Lower threshold to include similar matches
+      if (bestMatch != null && maxRelevance >= 15) {
+        // Lower threshold to include similar matches
         results[entry.url] = bestMatch;
       }
     }
@@ -667,7 +694,7 @@ $contactInfo
     final sortedResults = Map.fromEntries(
       results.entries.toList()
         ..sort((a, b) => b.value.relevance.compareTo(a.value.relevance))
-        ..take(5)
+        ..take(5),
     );
 
     return sortedResults;
@@ -676,12 +703,12 @@ $contactInfo
   Set<String> _generateSimilarWords(String word) {
     final similar = <String>{};
     final lower = word.toLowerCase();
-    
+
     // Add common variations
     similar.add(lower);
     similar.add(word.toUpperCase());
     similar.add('${word[0].toUpperCase()}${word.substring(1).toLowerCase()}');
-    
+
     // Add hyphenated and space variations
     if (word.contains('-')) {
       similar.add(word.replaceAll('-', ' '));
@@ -696,28 +723,28 @@ $contactInfo
       if (word.endsWith('ing')) similar.add(word.substring(0, word.length - 3));
       if (word.endsWith('ed')) similar.add(word.substring(0, word.length - 2));
     }
-    
+
     return similar;
   }
 
   String _extractRelevantSnippet(String text, String query) {
-    final sentences = text.split(RegExp(r'[.!?]+\s+')); 
+    final sentences = text.split(RegExp(r'[.!?]+\s+'));
     final lowerQuery = query.toLowerCase();
     final queryWords = lowerQuery.split(' ').where((w) => w.length > 2).toSet();
-    
+
     // Score each sentence based on query word matches
     var bestScore = 0;
     var bestSentenceIndex = 0;
-    
+
     for (var i = 0; i < sentences.length; i++) {
       final lowerSentence = sentences[i].toLowerCase();
       var score = 0;
-      
+
       // Direct query match
       if (lowerSentence.contains(lowerQuery)) {
         score += 100;
       }
-      
+
       // Individual word matches
       for (final word in queryWords) {
         if (lowerSentence.contains(word)) {
@@ -730,22 +757,22 @@ $contactInfo
           }
         }
       }
-      
+
       if (score > bestScore) {
         bestScore = score;
         bestSentenceIndex = i;
       }
     }
-    
+
     // Take 2-3 sentences starting from the best matching one
     final startIdx = bestSentenceIndex;
     final endIdx = math.min(startIdx + 3, sentences.length);
-    
+
     var snippet = sentences.sublist(startIdx, endIdx).join('. ').trim();
     if (snippet.length > 300) {
       snippet = '${snippet.substring(0, 297)}...';
     }
-    
+
     return snippet;
   }
-} 
+}

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../config/env_config.dart';
 import 'package:http/http.dart' as http;
@@ -26,9 +25,11 @@ Future<FirebaseOptions> loadFirebaseOptionsFromJson() async {
 Future<FirebaseOptions> _loadAndroidConfig() async {
   try {
     debugPrint("🤖 Loading Android Firebase config...");
-    
+
     // Download the JSON file from the URL
-    final http.Response response = await http.get(Uri.parse(firebaseConfigAndroid));
+    final http.Response response = await http.get(
+      Uri.parse(firebaseConfigAndroid),
+    );
     if (response.statusCode != 200) {
       throw Exception('Failed to download google-services.json');
     }
@@ -67,7 +68,7 @@ Future<FirebaseOptions> _loadAndroidConfig() async {
 Future<FirebaseOptions> _loadIOSConfig() async {
   try {
     debugPrint("🍎 Loading iOS Firebase config...");
-    
+
     // Download the PLIST file from the URL
     final http.Response response = await http.get(Uri.parse(firebaseConfigIos));
     if (response.statusCode != 200) {
@@ -83,8 +84,13 @@ Future<FirebaseOptions> _loadIOSConfig() async {
     final iosClientId = _extractFromPlist(plistStr, 'CLIENT_ID');
     final iosBundleId = _extractFromPlist(plistStr, 'BUNDLE_ID');
 
-    if (apiKey == null || appId == null || messagingSenderId == null || projectId == null) {
-      throw Exception("Missing required Firebase configuration values in GoogleService-Info.plist");
+    if (apiKey == null ||
+        appId == null ||
+        messagingSenderId == null ||
+        projectId == null) {
+      throw Exception(
+        "Missing required Firebase configuration values in GoogleService-Info.plist",
+      );
     }
 
     return FirebaseOptions(
@@ -111,10 +117,10 @@ String? _extractFromPlist(String plistContent, String key) {
 Future<void> initializeFirebase() async {
   try {
     debugPrint("🔥 Initializing Firebase...");
-    
+
     final options = await loadFirebaseOptionsFromJson();
     await Firebase.initializeApp(options: options);
-    
+
     debugPrint("✅ Firebase initialized successfully");
   } catch (e) {
     debugPrint("❌ Error initializing Firebase: $e");

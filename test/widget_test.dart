@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quikappflutter2/module/myapp.dart';
 
-import 'dart:convert';
-
-import 'package:quikappflutter2/utils/menu_parser.dart'; // Add this import
+// Add this import
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
@@ -25,8 +23,10 @@ void main() {
     const testBottomMenuIconPosition = "above";
     const testIsDeepLink = true;
     const testIsLoadIndicator = true;
-    final String testBottomMenuItems = "${[{"icon": "home", "label": "Home", "url": "https://example.com/home"},
-    ]}";
+    final String testBottomMenuItems =
+        "${[
+          {"icon": "home", "label": "Home", "url": "https://example.com/home"},
+        ]}";
 
     // Build the widget
     await tester.pumpWidget(

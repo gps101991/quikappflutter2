@@ -9,7 +9,7 @@ class ChatMessage {
   final List<Map<String, String>>? links;
   final List<String>? keywords;
 
-  ChatMessage({
+  const ChatMessage({
     required this.text,
     required this.isUser,
     required this.timestamp,
@@ -31,29 +31,34 @@ class ChatMessage {
     text: json['text'] as String,
     isUser: json['isUser'] as bool,
     timestamp: DateTime.parse(json['timestamp'] as String),
-    links: json['links'] != null 
-      ? List<Map<String, String>>.from(
-          (json['links'] as List).map((e) => Map<String, String>.from(e))
-        )
-      : null,
-    searchResults: json['searchResults'] != null
-      ? List<SearchResult>.from(
-          (json['searchResults'] as List).map((e) => SearchResult.fromJson(e))
-        )
-      : null,
-    keywords: json['keywords'] != null
-      ? List<String>.from(json['keywords'] as List)
-      : null,
+    links:
+        json['links'] != null
+            ? List<Map<String, String>>.from(
+              (json['links'] as List).map((e) => Map<String, String>.from(e)),
+            )
+            : null,
+    searchResults:
+        json['searchResults'] != null
+            ? List<SearchResult>.from(
+              (json['searchResults'] as List).map(
+                (e) => SearchResult.fromJson(e),
+              ),
+            )
+            : null,
+    keywords:
+        json['keywords'] != null
+            ? List<String>.from(json['keywords'] as List)
+            : null,
   );
 
   @override
   bool operator ==(Object other) =>
-    identical(this, other) ||
-    other is ChatMessage &&
-    runtimeType == other.runtimeType &&
-    text == other.text &&
-    isUser == other.isUser &&
-    timestamp == other.timestamp;
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          text == other.text &&
+          isUser == other.isUser &&
+          timestamp == other.timestamp;
 
   @override
   int get hashCode => Object.hash(text, isUser, timestamp);
@@ -90,4 +95,4 @@ class SearchResult {
     matchedKeywords: List<String>.from(json['matchedKeywords'] as List),
     index: json['index'] as int,
   );
-} 
+}
