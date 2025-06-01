@@ -2169,7 +2169,8 @@ workflows:
                 # Export to .env for use in xcodebuild
                 echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
                 echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
-                echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
+                #echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
+                #echo "CODE_SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\"" >> "$CM_ENV"
 
               # ✅ CERTIFICATE MATCH VALIDATION
               echo "🔍 Validating that provisioning profile matches signing cert..."
@@ -2374,7 +2375,7 @@ workflows:
           set +a
                 echo "✅ PROFILE_UUID=$PROFILE_UUID"
                 echo "✅ PROFILE_NAME=$PROFILE_NAME"
-                echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+#                echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
           
               xcodebuild -workspace "$XCODE_WORKSPACE" \
                 -scheme "$XCODE_SCHEME" \
@@ -2416,6 +2417,13 @@ workflows:
           -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
           -exportOptionsPlist ExportOptions.plist \
           -exportPath "$CM_BUILD_DIR/ios_output"
+          
+          if [[ ! -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
+          echo "❌ IPA file was not generated!"
+          exit 1
+          else
+          echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
+          fi
 
     artifacts:
       - build/ios/ipa/*.ipa
