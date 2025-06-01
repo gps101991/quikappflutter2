@@ -2158,7 +2158,47 @@ workflows:
           echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
           echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
-          
+          # ✅ CERTIFICATE MATCH VALIDATION
+              echo "🔍 Validating that provisioning profile matches signing cert..."
+              
+              PROFILE_PLIST="$BUILD_DIR/profile.plist"
+              CERT_DER_PATH="$BUILD_DIR/dev_cert.der"
+              
+              # Decode .mobileprovision into plist
+              security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+              
+              # Extract base64 and decode into DER file using awk (safe for multiline)
+              CERT_BASE64=$(plutil -extract DeveloperCertificates.0 xml1 -o - "$PROFILE_PLIST" \
+              | awk '/<data>/,/<\/data>/' \
+              | sed -e 's/<[^>]*>//g' -e 's/^[ \t]*//' \
+              | tr -d '\n')
+              
+              if [[ -z "$CERT_BASE64" ]]; then
+              echo "❌ Failed to extract base64 certificate data"
+              exit 1
+              fi
+              
+              echo "$CERT_BASE64" | base64 -d > "$CERT_DER_PATH"
+              
+              # Validate extracted certificate
+              if ! openssl x509 -inform der -in "$CERT_DER_PATH" -noout > /dev/null 2>&1; then
+              echo "❌ Extracted certificate is invalid or unreadable"
+              exit 1
+              fi
+              
+              echo "✅ Provisioning profile contains a valid Developer Certificate."
+              
+              DER_HASH=$(openssl x509 -in "$CERT_DER_PATH" -inform der -noout -sha1 -fingerprint)
+              CER_HASH=$(openssl x509 -in "$CERT_CER_PATH" -noout -sha1 -fingerprint)
+              
+              if [[ "$DER_HASH" != "$CER_HASH" ]]; then
+              echo "❌ Certificate in profile does NOT match imported .cer"
+            echo "DER: $DER_HASH"
+            echo "CER: $CER_HASH"
+              exit 1
+              else
+              echo "✅ Certificate matches the .cer used to generate the .p12"
+              fi
           echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
 
 
