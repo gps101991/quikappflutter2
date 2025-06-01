@@ -2216,6 +2216,7 @@ workflows:
       - name: 🔄 Clean and reinstall CocoaPods + Manual Code Signing setup
         script: |
             echo "📦 Cleaning and reinstalling CocoaPods..."
+            rm -rf ~/Library/Developer/Xcode/DerivedData
             cd ios
             rm -rf Pods Podfile.lock
             pod deintegrate
