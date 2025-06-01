@@ -2097,94 +2097,69 @@ workflows:
     scripts:
       - name: 🔐 iOS Code Signing Setup
         script: |
-          #!/usr/bin/env bash
-  
-            set -euo pipefail
-            trap 'echo "❌ Error on line $LINENO"' ERR
-            
-            # ✅ Required environment variables
-            REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD)
-            
-            echo "🔍 Validating required environment variables..."
-            for VAR in "${REQUIRED_VARS[@]}"; do
-            if [[ -z "${!VAR:-}" ]]; then
-            echo "❌ Environment variable '$VAR' is not set or empty!"
-            exit 1
-            else
-            echo "✅ $VAR is set"
-            fi
-            done
-            
-            # 🔧 Define paths
-            KEYCHAIN_NAME="ios-build.keychain"
-            BUILD_DIR="$CM_BUILD_DIR"
-            CERT_CER_PATH="$BUILD_DIR/certificate.cer"
-            PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
-            P12_PATH="$BUILD_DIR/generated_certificate.p12"
-            PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
-            
-            mkdir -p "$BUILD_DIR"
-            
-            echo "📥 Downloading .cer, .key, and provisioning profile..."
-            curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
-            curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
-            curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
-            
-            echo "🔐 Generating .p12 from .cer and .key..."
-            openssl pkcs12 -export \
-            -inkey "$PRIVATE_KEY_PATH" \
-            -in "$CERT_CER_PATH" \
-            -out "$P12_PATH" \
-            -name "Apple Distribution" \
-            -passin pass:"$CERT_PASSWORD" \
-            -passout pass:"$CERT_PASSWORD"
-            
-            echo "🔐 Creating and unlocking keychain..."
-            security delete-keychain "$KEYCHAIN_NAME" || true
-            security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-            security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-            
-            echo "🧹 Cleaning up old Apple Distribution certs..."
-            FOUND_CERTS=$(security find-identity -v -p codesigning "$KEYCHAIN_NAME" | grep "Apple Distribution" || true)
-            if [[ -n "$FOUND_CERTS" ]]; then
-            echo "$FOUND_CERTS" | while read -r line; do
-            CERT_HASH=$(echo "$line" | awk '{print $2}')
-          echo "⚠️ Removing old cert: $CERT_HASH"
-            security delete-certificate -Z "$CERT_HASH" "$KEYCHAIN_NAME" || true
-            done
-            else
-            echo "✅ No existing certificates to clean."
-            fi
-            
-            echo "🔑 Importing .p12 into keychain..."
-            security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
-            
-            echo "🔐 Configuring key partition list..."
+          set -euo pipefail
+          trap 'echo "❌ Error on line $LINENO"' ERR
+          
+          REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD)
+          echo "🔍 Validating environment variables..."
+          for VAR in "${REQUIRED_VARS[@]}"; do
+          [[ -z "${!VAR:-}" ]] && { echo "❌ Missing $VAR"; exit 1; }
+          echo "✅ $VAR is set"
+          done
+      
+          KEYCHAIN_NAME="ios-build.keychain"
+          BUILD_DIR="$CM_BUILD_DIR"
+          CERT_CER_PATH="$BUILD_DIR/certificate.cer"
+          PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
+          P12_PATH="$BUILD_DIR/generated_certificate.p12"
+          PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
+          
+          mkdir -p "$BUILD_DIR"
+          
+          echo "📥 Downloading cert, key, and mobileprovision..."
+          curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
+          curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
+          curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
+          
+          echo "🔐 Generating .p12 on CI..."
+          openssl pkcs12 -export \
+          -inkey "$PRIVATE_KEY_PATH" \
+          -in "$CERT_CER_PATH" \
+          -out "$P12_PATH" \
+          -name "Apple Distribution" \
+          -certfile "$CERT_CER_PATH" \
+          -passout pass:"$CERT_PASSWORD" \
+          -legacy
+          
+          echo "🔐 Setting up keychain..."
+          security delete-keychain "$KEYCHAIN_NAME" || true
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          
+          echo "🔑 Importing .p12..."
+          security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-            
-            echo "🔗 Making keychain default..."
-            security list-keychains -s "$KEYCHAIN_NAME"
-            security default-keychain -s "$KEYCHAIN_NAME"
-            
-            echo "📲 Installing provisioning profile..."
-            PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-            PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-            CODE_SIGN_IDENTITY="Apple Distribution"
-            
-            echo "✅ PROFILE_UUID=$PROFILE_UUID"
-            echo "✅ PROFILE_NAME=$PROFILE_NAME"
-            echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
-            
-            # Export values for later build steps
-            echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
-            echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
-            echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
-            
-            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
-            
-            echo "🎉 iOS code signing setup complete!"
+          security list-keychains -s "$KEYCHAIN_NAME"
+          security default-keychain -s "$KEYCHAIN_NAME"
+          
+          echo "📲 Installing provisioning profile..."
+          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+          PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+          CODE_SIGN_IDENTITY="Apple Distribution"
+          
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+          
+          echo "✅ PROFILE_UUID=$PROFILE_UUID"
+          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
+          echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
+          
+          echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
 
 
 
