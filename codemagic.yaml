@@ -2303,7 +2303,7 @@ workflows:
             fi
             pod install --repo-update
             cd ..
-          flutter build ios --release \
+            flutter build ios --release \
                     --dart-define=WEB_URL="$WEB_URL" \
                     --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
                     --dart-define=PKG_NAME="$PKG_NAME" \
@@ -2354,6 +2354,7 @@ workflows:
                     --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
                     --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
                     --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" > flutter_build_ios.log
+
       - name: 🏗 Archive iOS App with Xcode
         script: |
           echo "📥 Loading environment from $CM_ENV"
