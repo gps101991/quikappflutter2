@@ -16,7 +16,7 @@ import 'package:quikappflutter2/config/env_config.dart';
 import 'package:quikappflutter2/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:quikappflutter2/chat/chat_widget.dart';
 
@@ -190,11 +190,11 @@ class _MainHomeState extends State<MainHome> {
       }
     }
 
-    Connectivity().onConnectivityChanged.listen((_) {
-      _checkInternetConnection();
-    });
-
-    _checkInternetConnection();
+    // Connectivity().onConnectivityChanged.listen((_) {
+    //   _checkInternetConnection();
+    // });
+    //
+    // _checkInternetConnection();
 
     if (!kIsWeb &&
         [
@@ -365,15 +365,15 @@ class _MainHomeState extends State<MainHome> {
   }
 
   /// ✅ Connectivity
-  Future<void> _checkInternetConnection() async {
-    final result = await Connectivity().checkConnectivity();
-    final isOnline = result != ConnectivityResult.none;
-    if (mounted) {
-      setState(() {
-        hasInternet = isOnline;
-      });
-    }
-  }
+  // Future<void> _checkInternetConnection() async {
+  //   final result = await Connectivity().checkConnectivity();
+  //   final isOnline = result != ConnectivityResult.none;
+  //   if (mounted) {
+  //     setState(() {
+  //       hasInternet = isOnline;
+  //     });
+  //   }
+  // }
 
   /// ✅ Back button double-press exit
   Future<bool> _onBackPressed() async {
