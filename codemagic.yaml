@@ -2280,10 +2280,25 @@ workflows:
             </dict>
             </plist>
             EOF
-
+      - name: 📦 Install CocoaPods dependencies
+        script: |
+            cd ios
+            echo "platform :ios, '13.0'" > Podfile.platform_version
+            if grep -q "platform :ios" Podfile; then
+              sed -i '' 's/platform :ios.*/platform :ios, '\''13.0'\''/' Podfile
+            else
+              echo "platform :ios, '13.0'" | cat - Podfile > temp && mv temp Podfile
+            fi
+            pod install --repo-update
+            cd ..
 
       - name: 🏗 Archive iOS App with Xcode
         script: |
+          echo "📥 Loading environment from $CM_ENV"
+          set -a
+          source "$CM_ENV"
+          set +a
+
           xcodebuild -workspace "$XCODE_WORKSPACE" \
             -scheme "$XCODE_SCHEME" \
             -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
@@ -2292,7 +2307,8 @@ workflows:
             archive \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
+            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"    
 
       - name: 📦 Export signed IPA
         script: |
@@ -2324,6 +2340,8 @@ workflows:
           -exportPath "$CM_BUILD_DIR/ios_output"
 
     artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/Runner.xcarchive
       - build/ios/iphoneos/Runner.app
       - $CM_BUILD_DIR/ios_output/*.ipa
       - $CM_BUILD_DIR/*.p12
