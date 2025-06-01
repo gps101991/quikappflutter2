@@ -2294,6 +2294,8 @@ workflows:
             EOF
       - name: 📦 Install CocoaPods dependencies
         script: |
+            echo "📦 Upgrading CocoaPods to avoid present? crash..."
+            sudo gem install cocoapods -v 1.16.2
             cd ios
             echo "platform :ios, '13.0'" > Podfile.platform_version
             if grep -q "platform :ios" Podfile; then
