@@ -30,16 +30,13 @@ PROFILE_URL="https://raw.githubusercontent.com/prasanna91/QuikApp/main/GarbcodeA
 set -euo pipefail
 trap 'echo "❌ Error on line $LINENO"' ERR
 
+
 # ✅ Required environment variables
-REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD)
+REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD CM_BUILD_DIR CM_ENV)
 echo "🔍 Validating environment variables..."
 for VAR in "${REQUIRED_VARS[@]}"; do
-  if [[ -z "${!VAR:-}" ]]; then
-    echo "❌ Environment variable '$VAR' is not set!"
-    exit 1
-  else
-    echo "✅ $VAR is set"
-  fi
+  [[ -z "${!VAR:-}" ]] && { echo "❌ Missing $VAR"; exit 1; }
+  echo "✅ $VAR is set"
 done
 
 # 🔧 Paths
@@ -82,15 +79,24 @@ security default-keychain -s "$KEYCHAIN_NAME"
 echo "📲 Installing provisioning profile..."
 PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
 PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-CODE_SIGN_IDENTITY="Apple Distribution"
-
 mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
 cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+
+echo "📛 Extracting CODE_SIGN_IDENTITY from .p12..."
+EXTRACTED_IDENTITY=$(openssl pkcs12 -in "$P12_PATH" -nokeys -legacy -passin pass:"$CERT_PASSWORD" \
+  | openssl x509 -noout -subject | sed -n 's/^subject=.*CN=\(.*\)/\1/p')
+
+if [[ -z "$EXTRACTED_IDENTITY" ]]; then
+  echo "❌ Failed to extract CODE_SIGN_IDENTITY from .p12"
+  exit 1
+fi
+CODE_SIGN_IDENTITY="$EXTRACTED_IDENTITY"
 
 echo "✅ PROFILE_UUID=$PROFILE_UUID"
 echo "✅ PROFILE_NAME=$PROFILE_NAME"
 echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
 
+# Export to .env for use in xcodebuild
 echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
 echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
 echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
