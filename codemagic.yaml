@@ -2292,20 +2292,24 @@ workflows:
             </dict>
             </plist>
             EOF
-      - name: 📦 Install CocoaPods dependencies
+      - name: 📦 Setup Ruby & CocoaPods
         script: |
-            echo "📦 Upgrading CocoaPods to avoid present? crash..."
-            sudo gem install cocoapods -v 1.16.2
-            cd ios
-            echo "platform :ios, '13.0'" > Podfile.platform_version
-            if grep -q "platform :ios" Podfile; then
-              sed -i '' 's/platform :ios.*/platform :ios, '\''13.0'\''/' Podfile
-            else
-              echo "platform :ios, '13.0'" | cat - Podfile > temp && mv temp Podfile
-            fi
-            pod install --repo-update
-            cd ..
-            flutter build ios --release \
+            rbenv install 3.3.0 || true
+            rbenv global 3.3.0
+            gem install cocoapods -v 1.16.2
+
+      - name: 📦 Install CocoaPods
+        script: |
+                cd ios
+                echo "platform :ios, '13.0'" > Podfile.platform_version
+                if grep -q "platform :ios" Podfile; then
+                  sed -i '' 's/platform :ios.*/platform :ios, '\''13.0'\''/' Podfile
+                else
+                  echo "platform :ios, '13.0'" | cat - Podfile > temp && mv temp Podfile
+                fi
+                pod install --repo-update
+                cd ..
+                flutter build ios --release \
                     --dart-define=WEB_URL="$WEB_URL" \
                     --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
                     --dart-define=PKG_NAME="$PKG_NAME" \
