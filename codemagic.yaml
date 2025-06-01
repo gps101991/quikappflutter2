@@ -2412,7 +2412,7 @@ workflows:
             EOF
   
 
-  xcodebuild -exportArchive \
+          xcodebuild -exportArchive \
           -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
           -exportOptionsPlist ExportOptions.plist \
           -exportPath "$CM_BUILD_DIR/ios_output"
