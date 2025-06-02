@@ -2471,7 +2471,7 @@ workflows:
             --dart-define=KEY_STORE="$KEY_STORE" \
             --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
             --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
-            --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" > flutter_build_ios.log
+            --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD"
 #          \
 #            --export-options-plist=ExportOptions.plist > flutter_build_ios.log
 
