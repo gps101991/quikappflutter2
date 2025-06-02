@@ -2420,7 +2420,7 @@ workflows:
 
       - name: Flutter IPA Build
         script: |
-          flutter build ipa --release \
+          flutter build ios --release \
             --no-codesign \
             --dart-define=WEB_URL="$WEB_URL" \
             --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
