@@ -2421,6 +2421,7 @@ workflows:
       - name: Flutter IPA Build
         script: |
           flutter build ipa --release \
+            --no-codesign \
             --dart-define=WEB_URL="$WEB_URL" \
             --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
             --dart-define=PKG_NAME="$PKG_NAME" \
@@ -2470,8 +2471,9 @@ workflows:
             --dart-define=KEY_STORE="$KEY_STORE" \
             --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
             --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
-            --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" \
-            --export-options-plist=ExportOptions.plist > flutter_build_ios.log
+            --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" > flutter_build_ios.log
+#          \
+#            --export-options-plist=ExportOptions.plist > flutter_build_ios.log
 
 #          flutter build ipa --release \
 #                              #--no-codesign \
@@ -2593,11 +2595,18 @@ workflows:
 
       - name: Upload to TestFlight
         script: |
+          echo "📥 Loading environment from $CM_ENV"
+          set -a
+          source "$CM_ENV"
+          set +a
+               echo "✅ PROFILE_UUID=$PROFILE_UUID"
+               echo "✅ PROFILE_NAME=$PROFILE_NAME"
+               #echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
           xcrun altool --upload-app \
             --type ios \
             --file build/ios_output/Runner.ipa \
             --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --apiIssuer "$ISSUER_ID"
+            --apiIssuer "$PROFILE_UUID"
     artifacts:
       - build/ios_output/Runner.ipa
       - build/ios/ipa/*.ipa
@@ -2607,7 +2616,7 @@ workflows:
       - $CM_BUILD_DIR/ios_output/*.ipa
       - $CM_BUILD_DIR/*.p12
       - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+#      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 #    artifacts:
 #      - build/ios/iphoneos/Runner.app
 #      - build/ios/ipa/*.ipa
