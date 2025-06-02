@@ -2331,7 +2331,35 @@ workflows:
 
       - name: Flutter Build
         script: |
-          flutter build ios --release --no-codesign \
+          echo "✅ Creating ExportOptions.plist:"
+            cat > ExportOptions.plist <<EOF
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>teamID</key>
+              <string>$APPLE_TEAM_ID</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                <key>$BUNDLE_ID</key>
+                <string>$PROFILE_NAME</string>
+              </dict>
+              <key>compileBitcode</key>
+              <false/>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>signingCertificate</key>
+              <string>$CODE_SIGN_IDENTITY</string>
+            </dict>
+            </plist>
+            EOF
+          
+          flutter build ipa --release \
+                              #--no-codesign \
                               --dart-define=WEB_URL="$WEB_URL" \
                               --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
                               --dart-define=PKG_NAME="$PKG_NAME" \
@@ -2381,7 +2409,8 @@ workflows:
                               --dart-define=KEY_STORE="$KEY_STORE" \
                               --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
                               --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
-                              --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" > flutter_build_ios.log
+                              --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" \
+                              --export-options-plist=ExportOptions.plist > flutter_build_ios.log
 
       - name: 🏗 Archive iOS App with Xcode
         script: |
